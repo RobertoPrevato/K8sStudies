@@ -1,0 +1,127 @@
+[data-md-color-scheme=slate] {
+    --md-code-hl-comment-color: #33b227 !important;  /* #b28027 */
+}
+
+[data-md-color-scheme=default] {
+    --md-code-hl-comment-color: #b91414; /* #ab0404; */
+}
+
+html {
+    overflow-y: scroll;
+}
+
+.md-typeset__table tr td code {
+    white-space: nowrap;
+}
+
+@media screen and (min-width: 1000px) {
+    html.fullscreen {
+        .md-grid {
+            max-width: 98%;
+        }
+
+        .md-sidebar {
+            width: auto;
+            min-width: 15%;
+        }
+    }
+}
+
+#fullscreen-form label {
+    display: none;
+}
+
+html:not(.fullscreen) #full-screen {
+    display: inline-block !important;
+}
+
+html.fullscreen #full-screen-exit {
+    display: inline-block !important;
+}
+
+html.fullscreen #full-screen {
+    display: none !important;
+}
+
+[data-md-color-scheme="default"] .md-typeset [type="checkbox"]:checked + .task-list-indicator::before {
+    background-color: #2d319f;
+}
+
+[data-md-color-scheme="slate"] .md-typeset [type="checkbox"]:checked + .task-list-indicator::before {
+    background-color: #00e6e6;
+}
+
+[data-md-color-scheme="slate"] {
+    --md-accent-fg-color: #21bbd0;
+    --md-primary-fg-color: #53ebff;
+    --md-primary-fg-color--light: #5db0c0;
+    --md-primary-fg-color--dark: #308ea1;
+}
+
+.md-search__input, .md-header .md-search__input::placeholder, .md-search__input + .md-search__icon {
+  color: #000 !important;
+}
+
+.md-header {
+  background-color: var(--bg-color, teal);
+}
+
+.md-content article {
+  margin-bottom: 3em;
+}
+
+.md-header .md-search__input {
+  background-color: #fff;
+}
+
+.md-header-nav__button.md-logo img, .md-header-nav__button.md-logo svg {
+  width: 1.8rem;
+  height: auto;
+}
+
+.img-full-width + p img {
+  width: 100%;
+}
+
+.img-auto-width + p img {
+  width: none;
+}
+
+.md-typeset h1 {
+  margin: 0 0 1em;
+}
+
+.small {
+  font-size: 14px;
+}
+
+span.task-list-indicator {
+    margin-right: 5px;
+}
+
+@media screen and (max-width: 76.1875em) {
+    .md-nav--primary .md-nav__title[for=__drawer] {
+        background-color: #000000;
+    }
+}
+
+:root {
+    --nt-color-7: #108d10;
+}
+
+.version-warning {
+    margin-top: 5px !important;
+}
+
+.md-typeset .tabbed-labels>label, .md-typeset .admonition, .md-typeset details {
+    font-size: .75rem !important;
+}
+/*
+.md-typeset code {
+    font-size: .9em !important;
+}
+
+table td code {
+    white-space: nowrap;
+}
+*/

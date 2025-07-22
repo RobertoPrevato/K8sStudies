@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teal-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: teal-app
+  template:
+    metadata:
+      labels:
+        app: teal-app
+    spec:
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: teal-app
+          image: robertoprevato/mvcdemo:latest
+          env:
+            - name: BG_COLOR
+              value: "#008080"
+            - name: APP_ROUTE_PREFIX
+              value: teal
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /teal/
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /teal/
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teal-app
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: teal-app
+  type: ClusterIP

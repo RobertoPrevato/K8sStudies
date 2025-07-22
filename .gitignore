@@ -1,0 +1,10 @@
+site
+venv
+.build
+.env
+site.zip
+deploy
+out
+.local
+**/*.crt
+**/*.key
