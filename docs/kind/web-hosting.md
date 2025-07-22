@@ -92,7 +92,7 @@ docker run --name mvcdemo --rm -p 8080:80 \
 And then navigate to *[http://localhost:8080/orange](http://localhost:8080/orange)* in your web browser. The page should
 display like in the picture below:
 
-![Orange Web App](/img/blacksheep-orange-mvc.png)
+![Orange Web App](/K8sStudies/img/blacksheep-orange-mvc.png)
 
 Now stop the container with:
 
@@ -480,7 +480,7 @@ If you see a warning about the self-signed certificate, you can safely ignore it
 local development purposes. The application at *[https://www.neoteroi.xyz/teal/](https://www.neoteroi.xyz/teal/)* should
 display like in the pictures below:
 
-![Teal Web App](/img/blacksheep-teal-mvc-https.png)
+![Teal Web App](/K8sStudies/img/blacksheep-teal-mvc-https.png)
 
 ### Using k9s
 
@@ -497,9 +497,9 @@ use the `/` key to search for resources by name.
 The screenshots below show the list of namespaces and the logs of a container in the
 `orange` namespace:
 
-![k9s namespaces](/img/k9s-namespaces.png)
+![k9s namespaces](/K8sStudies/img/k9s-namespaces.png)
 
-![k9s container logs](/img/k9s-container-logs.png)
+![k9s container logs](/K8sStudies/img/k9s-container-logs.png)
 
 ## Summary
 

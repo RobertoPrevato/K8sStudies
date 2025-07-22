@@ -1,5 +1,6 @@
-site_name: KStudies
+site_name: K8sStudies
 site_author: Roberto Prevato
+site_url: https://robertoprevato.github.io/K8sStudies/
 site_description: Personal Kubernetes studies
 repo_name: RobertoPrevato/K8sStudies
 repo_url: https://github.com/RobertoPrevato/K8sStudies

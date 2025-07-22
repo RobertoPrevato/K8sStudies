@@ -11,7 +11,7 @@ database in the `./store/` folder relative to the application's root (its _Curre
 Working Directory (CWD)_), and its homepage displays a random fortune cookie each time
 it is refreshed. The screenshot below shows the homepage of the application:
 
-![Fortune Cookies demo app](/img/fortune-cookies-demo.png)
+![Fortune Cookies demo app](/K8sStudies/img/fortune-cookies-demo.png)
 
 ---
 
@@ -204,7 +204,7 @@ kubectl apply -n common-ingress -f common-ingress.yaml
 The application is now running in the cluster, and you can access it using the
 following URL: [*https://neoteroi.xyz/cookies/*](https://neoteroi.xyz/cookies/).
 
-![Fortune Cookies](/img/fortune-cookies-app.png)
+![Fortune Cookies](/K8sStudies/img/fortune-cookies-app.png)
 
 /// admonition | Using SQLite for web applications.
     type: example
