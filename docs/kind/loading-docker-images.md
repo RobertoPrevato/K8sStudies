@@ -14,7 +14,7 @@ article:
 
 I recommend reading this article.
 
-## Checking which Docker images are loaded in Kind
+## Listing Docker images in Kind
 
 To verify which Docker images are loaded in the Kind cluster, enter the
 `kind-control-plane` using the Docker CLI:
@@ -101,9 +101,7 @@ kind load docker-image robertoprevato/mvcdemo:0.0.1
 This allows you to load images that are built locally into Kind, removing the need to
 fetch them from a container registry.
 
-## For more information
-
-Refer to the Kind documentation: [*Loading an Image Into Your Cluster*](https://kind.sigs.k8s.io/docs/user/quick-start/#loading-an-image-into-your-cluster).
+For more information, refer to the Kind documentation: [*Loading an Image Into Your Cluster*](https://kind.sigs.k8s.io/docs/user/quick-start/#loading-an-image-into-your-cluster).
 
 ## Next steps
 

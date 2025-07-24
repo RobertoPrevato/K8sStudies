@@ -49,17 +49,25 @@ promoting greater modularity and scalability.
 
 In my opinion, **Docker** had a profound impact on **Microsoft**, too.
 
-**Microsoft**, which was known for its adversion towards open-source, changed CEO and [_"felt
-in love with
+Microsoft, which in 2010 was still known for its adversion towards open-source and
+for its [_"not invented here syndrome"_](https://medium.com/microsoft-open-source-stories/python-at-microsoft-flying-under-the-radar-eabbdebe4fb0),
+changed CEO and [_"felt in love with
 Linux"_](https://www.microsoft.com/en-us/windows-server/blog/2015/05/06/microsoft-loves-linux/)
 shortly after Docker's introduction, and Windows was modified to
-support Linux and running Docker in the same period, through the [_Windows Subsystem For Linux (WSL)](https://learn.microsoft.com/en-us/windows/wsl/install)_.
+support Linux and running Docker in the same period, through the _[Windows Subsystem For Linux (WSL)](https://learn.microsoft.com/en-us/windows/wsl/install)_.
 
-Talking about the previous adversion towards open-source, let's not forget, for instance:
+Talking about the adversion towards open-source, let's not forget, for instance:
 
 - In *1996*, ["Embrace, extend, and extinguish" (EEE)](https://en.m.wikipedia.org/wiki/Embrace,_extend,_and_extinguish).
-- In *2001*, [Steve Ballmer's famous quote](https://www.youtube.com/watch?v=2k8j6d9a3b4)
- about Linux being a cancer in an _intellectual property sense_.
+- In *2001*, [Steve Ballmer's famously](https://www.reddit.com/r/linux/comments/71vlnq/til_steve_ballmer_once_called_linux_a_cancer/)
+ called Linux a _cancer in an intellectual property sense_, and said: _"The only thing we have a problem with is when the government funds open-source work."_.
+- The article already linked above [_Python at Microsoft: flying under the radar_](https://medium.com/microsoft-open-source-stories/python-at-microsoft-flying-under-the-radar-eabbdebe4fb0)
+  states the following:
+
+> In **2010**, our few Pythonistas were flying under the radar {…}. The team was small,
+> leftover from a previous job, but was chipping away at a company culture that suffered
+> from “not invented here” syndrome: Python was a language that belonged to other
+> people, and so Microsoft was not interested.
 
 /// admonition | From Wikipedia
     type: info
@@ -153,3 +161,13 @@ background process) to manage containers, while Podman is daemonless, allowing f
 rootless container execution and stronger isolation. This difference in architecture
 impacts how each tool handles security, resource management, and integration with other
 systems.
+
+Podman was created by [Red Hat](https://www.redhat.com/en), along with the open-source
+community.
+
+Podman's development was partly driven by the desire for a daemonless container engine,
+which offers a different architectural approach compared to Docker. This daemonless
+design aims to improve security and resource efficiency. It's a core component of Red
+Hat's container strategy and is used in various Red Hat products like Red Hat Enterprise
+Linux (RHEL). Podman's development continues to be driven by Red Hat and the open-source
+community, with ongoing efforts to enhance its functionality and performance.
