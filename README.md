@@ -7,3 +7,6 @@ sharing.
 
 The opinions expressed in these notes are my own and do **not** represent the views of my
 employer.
+
+My notes are deployed to GitHub Pages at the following URL:
+[https://robertoprevato.github.io/K8sStudies/](https://robertoprevato.github.io/K8sStudies/).

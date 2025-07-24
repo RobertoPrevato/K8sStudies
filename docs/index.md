@@ -4,14 +4,17 @@ title: ⚓ Kubernetes Studies
 
 # Personal Kubernetes studies ⚓
 
-This repository contains my personal studies and notes on [**Kubernetes**](https://kubernetes.io/), including various
-configurations, deployments, and other related topics.
+This repository contains my personal notes and studies on
+[**Kubernetes**](https://kubernetes.io/), including various configurations, deployments,
+and other related topics.
 
-These notes are intended for **personal use**, but they may be useful for knowledge
-sharing.
+These notes are primarily for **personal reference**, but may also be helpful for
+sharing knowledge with others. Some of the information I write here will likely be wrong
+or not according to best practices, because these are genuine studies, and I am still
+learning.
 
-The opinions expressed in these notes are my own and do **not** represent the views of my
-employer.
+The opinions expressed in these notes are my own and do **not** represent the views of
+my employer.
 
 ## A foreword on vendor lock-in
 
@@ -41,8 +44,8 @@ combine on-premises and cloud resources, reducing reliance on a single vendor.
   itself open-source and widely supported. This focus on Linux ensures broad
   compatibility, flexibility, and avoids dependencies on proprietary operating systems.
 
-However, to really avoid vendor lock-in, it's essential to learn the standard
-technologies and tools that are not specific to any cloud provider. This means focusing
+However, to really avoid vendor lock-in, it's essential to learn the _standard
+technologies_ and tools that are not specific to any cloud provider. This means focusing
 on the core Kubernetes concepts and tools like
 [**kubectl**](https://kubernetes.io/docs/reference/kubectl/),
 [**kubeadm**](https://kubernetes.io/docs/reference/setup-tools/kubeadm/),
@@ -59,6 +62,11 @@ like [Azure Kubernetes Service (AKS)](https://azure.microsoft.com/en-us/products
 [Amazon Elastic Kubernetes Service (EKS)](https://aws.amazon.com/eks/), or
 [Google Kubernetes Engine (GKE)](https://cloud.google.com/kubernetes-engine).
 
+## Diving deeper section
+
+The _Diving deeper_ section contains other topics related to *Docker* and *Kubernetes*,
+including non-technical information and my personal view on events.
+
 ## Requirements to follow
 
 Basic knowledge of the following technologies is required to follow my notes:
@@ -67,6 +75,9 @@ Basic knowledge of the following technologies is required to follow my notes:
 - [Linux](https://ubuntu.com/).
 - [Docker](https://www.docker.com/).
 - [Kubernetes](https://kubernetes.io/).
+
+Understanding of the web and networking is also helpful, as many of the examples
+involve deploying web applications in Kubernetes.
 
 Although I will try to include some quick-start guide for these technologies, I assume that
 you have a basic understanding of them, as they are essential for working with Kubernetes

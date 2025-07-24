@@ -1,0 +1,89 @@
+- title: Linus Torvalds creates Linux 🐧
+  content: >
+    **Linux** was invented in 1991 by Linus Torvalds. He began developing the Linux kernel,
+    the core of the operating system, while a student at the University of Helsinki. The
+    first version, 0.02, was released that year, with version 1.0 following in 1994.
+  icon: ":material-linux:"
+  sub_title: "1991"
+
+- title: Embrace, extend, and extinguish
+  content: >
+    "Embrace, extend, and extinguish" (EEE), also known as "embrace, extend, and
+    exterminate", is a phrase that the **U.S. Department of Justice** found was used
+    internally by Microsoft to describe its strategy for entering product categories
+    involving widely used open standards, extending those standards with proprietary
+    capabilities, and using the differences to strongly disadvantage its competitors.
+    <a href="https://en.m.wikipedia.org/wiki/Embrace,_extend,_and_extinguish">Source</a>.
+  icon: ":material-axe:"
+  sub_title: "1996"
+
+- title: Steve Ballmer calls Linux a "cancer"
+  content: >
+    In 2001, former Microsoft CEO Steve Ballmer famously described Linux as "a cancer
+    that attaches itself in an intellectual property sense to everything it touches".
+    This statement was part of Microsoft's broader anti-open source stance at the time,
+    stemming from concerns about the GPL license potentially requiring the release of
+    proprietary code.
+  icon: ":material-thumb-down:"
+  sub_title: "2001"
+
+- title: Solomon Hykes creates Docker
+  content: >
+    Solomon Hykes walked onto the stage at PyCon 2013 (Python conference) and revealed
+    Docker to the world for the first time. Docker is one of the most influential
+    technologies in the world of containerization. **Docker** enables developers to
+    automate the deployment of applications inside lightweight, portable containers.
+    Docker revolutionized the way applications are built, shipped, and run, making it
+    easier to create consistent environments across development, testing, and
+    production. Docker uses two features of the Linux kernel: **cgroups** and
+    **namespaces**. In its first version, Docker is only supported on Linux.
+  icon: ":material-docker:"
+  sub_title: "2013"
+
+- title: Satya Nadella becomes the CEO of Microsoft
+  content: >
+    Satya Nadella becomes the CEO of Microsoft, since **February 4, 2014**,
+    succeeding Steve Ballmer. Under his leadership, Microsoft begins to embrace open
+    source technologies and cloud computing, marking a significant shift in the
+    company's strategy.
+  icon: ":material-compass-rose:"
+  sub_title: "2014"
+
+- title: Microsoft falls in love with Linux 😏
+  content: >
+    Microsoft began to embrace open source more openly. Satya Nadella famously stated,
+    "Microsoft loves Linux," signaling a major shift in the company's strategy.
+    Probably somebody at Microsoft realized that a technology like Docker could not be
+    left to the Linux community alone, and that Microsoft had to embrace it.
+  icon: ":material-microsoft:"
+  sub_title: "2014"
+
+- title: Kubernetes is released
+  content: >
+    **Kubernetes** is released by Google as an open-source container orchestration
+    platform, for **Docker** containers. It provides a powerful framework for automating
+    the deployment, scaling, and management of containerized applications. Kubernetes
+    quickly becomes the de facto standard for container orchestration, widely adopted
+    across the industry. Kubernetes was initially strongly coupled to Docker. At that
+    time, Docker was the primary container runtime used by Kubernetes for managing
+    containerized applications. Over time, Kubernetes evolved to support multiple
+    container runtimes through the Container Runtime Interface (CRI), reducing its
+    dependency on Docker.
+  icon: ":material-kubernetes:"
+  sub_title: "2015"
+
+- title: Windows Subsystem for Linux (WSL)
+  content: >
+    Windows Subsystem for Linux (WSL) was first announced at BUILD in 2016 and first
+    shipped with the Windows 10 Anniversary update.
+
+    WSL is a compatibility layer for running Linux binary executables natively on
+    Windows 10 and Windows Server 2019. It allows developers to run a Linux environment
+    directly on Windows without the need for a virtual machine or dual-boot setup. WSL
+    provides a Linux-compatible kernel interface and supports running Linux
+    distributions such as Ubuntu, Debian, and others directly on Windows. This enables
+    developers to use Linux command-line tools, utilities, and applications alongside
+    their Windows applications, making it easier to develop and test cross-platform
+    applications.
+  icon: ":material-docker:"
+  sub_title: "2016"

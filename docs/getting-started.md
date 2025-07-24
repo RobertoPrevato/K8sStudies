@@ -4,13 +4,14 @@ This page introduces the basics to start learning Kubernetes:
 
 - [X] Preparing a development environment.
 - [X] Recommended learning resources for beginners.
+- [X] Obtaining the examples of this repository.
 
 ## Preparing a development environment
 
 To work with **Docker** and **Kubernetes**, I always used **Ubuntu** and the **CLI**
 tools, without graphical user interfaces. I started using Docker in 2015. At that time,
 Docker was only supported on Linux and there was no [_Docker Desktop_](https://docs.docker.com/desktop/).
-Today I am still using CLI, and I can recommend it. I have no interest in using
+Today I am still using the CLI, and I can recommend it. I have no interest in using
 _Docker Desktop_.
 
 I don't talk about [Podman](https://podman.io/), because I never used it, but I heard
@@ -127,7 +128,7 @@ best reasons for using Kubernetes.
 /// admonition | Discouraging as a Service.
     type: danger
 
-Cloud vendors often brain-wash people into thinking that they _need_ to use their
+Cloud vendors regularly brain-wash people into thinking that they _need_ to use their
 specific technologies and that they will never manage to achieve things by themselves.
 
 For instance, when advertising tools like [*GitHub Codespaces*](https://github.com/features/codespaces)
@@ -137,9 +138,11 @@ environments today has never been easier, for most use cases.
 
 Similarly, Cloud providers tend to advertise their managed Kubernetes services,
 discouraging people from attempting to manage their own Kubernetes clusters on-premises.
-One of the objectives of my studies is to assess by myself how hard is it to work with
-Kubernetes locally, and how to create clusters using **kubeadm** without relying on
-cloud providers.
+A defeatist climate is deliberately created to push people to use managed services,
+which are more expensive and lead to lock-in with the cloud service provider. This
+annoys me. One of the objectives of my studies is to assess by myself how hard is it to
+work with Kubernetes locally, and how to create clusters using **kubeadm** without
+relying on cloud providers.
 
 ///
 
@@ -210,6 +213,10 @@ takes just a few minutes to install the necessary tools (depending on your inter
 connection speed).
 You can use Docker and Kind to run Kubernetes clusters locally, which is a great way to
 start learning Kubernetes without relying on cloud providers.
+
+## Get the examples
+
+If you are interested in the examples of this repository, you can clone the repository at: [https://github.com/RobertoPrevato/K8sStudies/](https://github.com/RobertoPrevato/K8sStudies/).
 
 ## Next steps
 
