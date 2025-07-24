@@ -90,9 +90,8 @@ options:
 ## Loading images manually into Kind
 
 To load images manually from the host into Kind, you can use the `load` command offered
-by the `kind` CLI.
-
-For instance, to load a `robertoprevato/mvcdemo:0.0.1` image into Kind:
+by the `kind` CLI. For instance, to load a `robertoprevato/mvcdemo:0.0.1` image into
+Kind:
 
 ```bash
 kind load docker-image robertoprevato/mvcdemo:0.0.1
