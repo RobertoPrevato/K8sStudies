@@ -15,6 +15,8 @@ nav:
       - Mounting Volumes: kind/mounting-volumes.md
       - Loading Docker Images: kind/loading-docker-images.md
       - Multi Nodes: kind/multi-nodes.md
+  - Diving deeper:
+      - A bit of Docker history: diving-deeper/docker-history.md
 
 theme:
   features:

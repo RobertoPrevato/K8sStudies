@@ -61,9 +61,7 @@ kube-proxy-xdxzp                             1/1     Running   2 (32m ago)   47h
 kube-scheduler-kind-control-plane            1/1     Running   2 (32m ago)   47h
 ```
 
-Clusters created with Kind are ephemeral, meaning they can be easily created and deleted.
-
-To delete the cluster, you can run:
+Clusters created with Kind are ephemeral, meaning they can be easily created and deleted. To delete the cluster, you can run:
 
 ```bash
 kind delete cluster

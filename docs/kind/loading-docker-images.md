@@ -4,8 +4,8 @@ stopped working because Kubernetes could not pull the Docker image
 
 When you use the `:latest` tag, Kubernetes will attempt to pull the image from the
 source registry (e.g., Docker Hub) on each pod restart by default. This means your
-application may fail to start if there is no internet connection or if the registry is
-unavailable.
+workloads deployed to Kubernetes may fail to start if a connection to the source
+registry is unavailable, or if the containers registry is unreachable.
 
 While looking for information on this subject, I came across this great
 article:
@@ -14,7 +14,7 @@ article:
 
 I recommend reading this article.
 
-## Checking which Docker images are loaded in Kind
+## Listing Docker images in Kind
 
 To verify which Docker images are loaded in the Kind cluster, enter the
 `kind-control-plane` using the Docker CLI:
@@ -60,6 +60,16 @@ not Docker. Therefore, the `docker` CLI is not available inside the node.
 Instead, you should use `crictl`, which is a CLI for CRI-compatible container runtimes
 like containerd.
 
+The *Container Runtime Interface* (CRI) is a set of specifications that define how
+container runtimes should behave in a Kubernetes environment. CRI-compatible tools, like
+`crictl`, are used to interact with container runtimes that are compatible with the CRI
+specification, enabling Kubernetes to manage containers. While Docker historically had
+its own runtime, Kubernetes adopted the CRI to allow for more flexibility and support
+for different runtimes like containerd and CRI-O.
+
+Initially Kubernetes was tightly coupled with Docker (which is understandable, as it was
+Docker to revolutionize containerization since in 2013).
+
 ///
 
 ## How to prevent Kubernetes from re-fetching images
@@ -80,9 +90,8 @@ options:
 ## Loading images manually into Kind
 
 To load images manually from the host into Kind, you can use the `load` command offered
-by the `kind` CLI.
-
-For instance, to load a `robertoprevato/mvcdemo:0.0.1` image into Kind:
+by the `kind` CLI. For instance, to load a `robertoprevato/mvcdemo:0.0.1` image into
+Kind:
 
 ```bash
 kind load docker-image robertoprevato/mvcdemo:0.0.1
@@ -90,6 +99,8 @@ kind load docker-image robertoprevato/mvcdemo:0.0.1
 
 This allows you to load images that are built locally into Kind, removing the need to
 fetch them from a container registry.
+
+For more information, refer to the Kind documentation: [*Loading an Image Into Your Cluster*](https://kind.sigs.k8s.io/docs/user/quick-start/#loading-an-image-into-your-cluster).
 
 ## Next steps
 

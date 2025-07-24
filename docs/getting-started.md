@@ -4,13 +4,14 @@ This page introduces the basics to start learning Kubernetes:
 
 - [X] Preparing a development environment.
 - [X] Recommended learning resources for beginners.
+- [X] Obtaining the examples of this repository.
 
 ## Preparing a development environment
 
 To work with **Docker** and **Kubernetes**, I always used **Ubuntu** and the **CLI**
 tools, without graphical user interfaces. I started using Docker in 2015. At that time,
 Docker was only supported on Linux and there was no [_Docker Desktop_](https://docs.docker.com/desktop/).
-Today I am still using CLI, and I can recommend it. I have no interest in using
+Today I am still using the CLI, and I can recommend it. I have no interest in using
 _Docker Desktop_.
 
 I don't talk about [Podman](https://podman.io/), because I never used it, but I heard
@@ -24,7 +25,7 @@ than 250 employees or more than $10 million in annual revenue. Smaller businesse
 personal use, education, and non-commercial open source projects can still use Docker
 Desktop for free.
 
-You can use the Docker CLI (command-line interface) for free for commercial use.
+You can use the Docker CLI (command-line interface) for free also for commercial use.
 
 ///
 
@@ -67,10 +68,10 @@ to use WSL. If you have Windows 11 22H2 or later, Windows Terminal will come pre
 
 To install Docker on Ubuntu, you can follow the official instructions from
 [docs.docker.com](https://docs.docker.com/engine/install/ubuntu/).
+I recommend using the _apt repository_, like [documented here](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository).
 
-I recommend to install it using the _apt repository_, like [documented here](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository).
-
-Installing the tools is trivial. At the time of this writing, it is sufficient to run the following commands:
+Installing the tools is trivial. At the time of this writing, it is sufficient to run
+the following commands:
 
 ```bash
 # Add Docker's official GPG key:
@@ -102,7 +103,8 @@ Verify that you can run Docker without `sudo` by running:
 docker run hello-world
 ```
 
-If you see a message that says "Hello from Docker!", then you have successfully installed Docker.
+If you see a message that says "Hello from Docker!", then you have successfully
+installed Docker.
 
 ![Docker hello-world on WSL2](img/docker-hello-world-wsl2.png)
 
@@ -113,35 +115,16 @@ To run Kubernetes locally for learning purposes, I recommend using
 Kubernetes clusters in Docker containers.
 
 I also tried [MiniKube](https://minikube.sigs.k8s.io/docs/), but I am currently focused
-on Kind and this is what I will use in my notes.
+on Kind and this is what I will use in my first notes.
 
 Using *Kind* or *MiniKube* is convenient for development and testing purposes, because
 they allow you to run a Kubernetes cluster on your local machine without the need for a
 full-fledged cloud provider. When I started studying Kubernetes, at first I used [Azure Kubernetes Service
-(AKS)](https://azure.microsoft.com/en-us/products/kubernetes-service), but it is very
-expensive to run such service just for testing purposes.
+(AKS)](https://azure.microsoft.com/en-us/products/kubernetes-service), but it is **very
+expensive** to run such service just for learning purposes.
 
 Always relying on cloud providers can lead to vendor lock-in, which defeats one of the
-best reasons for using Kubernetes.
-
-/// admonition | Discouraging as a Service.
-    type: danger
-
-Cloud vendors often brain-wash people into thinking that they _need_ to use their
-specific technologies and that they will never manage to achieve things by themselves.
-
-For instance, when advertising tools like [*GitHub Codespaces*](https://github.com/features/codespaces)
-or [Azure DevBox](https://azure.microsoft.com/en-us/products/dev-box/), they say that
-"creating a development environment is too hard", but in reality creating development
-environments today has never been easier, for most use cases.
-
-Similarly, Cloud providers tend to advertise their managed Kubernetes services,
-discouraging people from attempting to manage their own Kubernetes clusters on-premises.
-One of the objectives of my studies is to assess by myself how hard is it to work with
-Kubernetes locally, and how to create clusters using **kubeadm** without relying on
-cloud providers.
-
-///
+[best reasons for using Kubernetes](./index.md#a-foreword-on-vendor-lock-in)
 
 To install `kind`, follow the instructions on [kind's official website](https://kind.sigs.k8s.io/docs/user/quick-start/#installation).
 At the time of this writing, it is sufficient to run the following commands to install
@@ -210,6 +193,10 @@ takes just a few minutes to install the necessary tools (depending on your inter
 connection speed).
 You can use Docker and Kind to run Kubernetes clusters locally, which is a great way to
 start learning Kubernetes without relying on cloud providers.
+
+## Get the examples
+
+If you are interested in the examples of this repository, you can clone the repository at: [https://github.com/RobertoPrevato/K8sStudies/](https://github.com/RobertoPrevato/K8sStudies/).
 
 ## Next steps
 
