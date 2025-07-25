@@ -72,7 +72,7 @@ that they _need_ to use their specific services and that they will never manage 
 achieve anything by themselves.
 
 For instance, when advertising tools like [*GitHub Codespaces*](https://github.com/features/codespaces)
-or [Azure DevBox](https://azure.microsoft.com/en-us/products/dev-box/), they say that
+or [*Azure DevBox*](https://azure.microsoft.com/en-us/products/dev-box/), they say that
 "creating a development environment is too hard", but in reality creating development
 environments today has never been easier, for most use cases.
 
