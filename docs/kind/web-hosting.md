@@ -345,6 +345,12 @@ cd ../
 kubectl apply -n common-ingress -f common-ingress.yaml
 ```
 
+The `kubectl create secret {…}` command creates a Kubernetes TLS secret named
+`neoteroi-xyz-tls` in the common-ingress namespace. It uses the certificate file
+`neoteroi-xyz-tls.crt` and the private key file `neoteroi-xyz-tls.key`. This secret is
+is later referenced by Ingress resources to enable HTTPS (TLS) for services exposed in
+the cluster.
+
 `common-ingress.yaml` is the configuration file that defines the ingress rules and
 services for the orange and teal web applications, which is shown below:
 

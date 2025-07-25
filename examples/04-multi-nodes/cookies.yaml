@@ -12,10 +12,8 @@ spec:
       labels:
         app: fortune-cookies
     spec:
-      tolerations:
-        - key: "CriticalAddonsOnly"
-          operator: "Exists"
-          effect: "NoSchedule"
+      nodeSelector:
+        apps-node: "true"
       containers:
         - name: fortune-cookies
           image: robertoprevato/fortunecookies:latest

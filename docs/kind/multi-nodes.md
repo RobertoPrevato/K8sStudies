@@ -103,10 +103,13 @@ cd56624175d5   kindest/node:v1.33.1   "/usr/local/bin/entr…"   5 minutes ago  
 be74048526e3   kindest/node:v1.33.1   "/usr/local/bin/entr…"   5 minutes ago   Up 5 minutes   127.0.0.1:34545->6443/tcp                  kind-control-plane
 ```
 
-## Configuring Ingress with NGINX and Kind
+## Configuring Node Selectors
 
-If previously I deployed the ingress controller downloading `https://kind.sigs.k8s.io/examples/ingress/deploy-ingress-nginx.yaml` directly, now I need to obtain a copy of this file and modify
-it to ensure the controller is deployed on the worker node with the label `ingress-node: "true"`. To achieve this, we need to specify a `nodeSelector` rule in the ingress controller deployment.
+Previously I deployed the ingress controller downloading
+`https://kind.sigs.k8s.io/examples/ingress/deploy-ingress-nginx.yaml` directly, now I
+need to obtain a copy of this file and modify it to ensure the controller is deployed on
+the worker node with the label `ingress-node: "true"`. To achieve this, we need to
+specify a `nodeSelector` rule in the ingress controller deployment.
 
 ```yaml
 spec:
@@ -114,4 +117,75 @@ spec:
     spec:
       nodeSelector:
         ingress-node: "true"
+```
+
+I tried to apply a `nodeSelector` to each section describing containers, and to deploy the ingress this way.
+
+```bash
+kubectl apply -f deploy-ingress-nginx.yaml
+```
+
+**TODO: continua qua.**
+
+### Node selector on the cookies app
+
+```yaml {linenums="1" hl_lines="15-16"}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fortune-cookies
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fortune-cookies
+  template:
+    metadata:
+      labels:
+        app: fortune-cookies
+    spec:
+      nodeSelector:
+        apps-node: "true"
+      containers:
+        - name: fortune-cookies
+          image: robertoprevato/fortunecookies:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: APP_ROUTE_PREFIX
+              value: cookies
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /cookies/
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /cookies/
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          volumeMounts:
+            - name: store-volume
+              mountPath: /home/store
+      volumes:
+        - name: store-volume
+          hostPath:
+            path: /home/stores/cookies
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fortune-cookies
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: fortune-cookies
+  type: ClusterIP
+---
 ```
