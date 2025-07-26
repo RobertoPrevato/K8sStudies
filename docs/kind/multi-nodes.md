@@ -3,8 +3,8 @@ single Docker container to simulate a whole cluster. I was expecting it would us
 least two containers to separate the Kubernetes _control plane_ from a _worker node_,
 to mimic more closely a real Kubernetes environment.
 
-Anyway, Kind supports multi-node clusters. Unsurprisingly, we can edit the _kind_ configuration
-file to include more nodes.
+Anyway, Kind supports multi-node clusters. We can edit the _kind_ configuration file to
+include more nodes.
 
 ## Creating a cluster with multiple nodes
 
@@ -125,7 +125,8 @@ I tried to apply a `nodeSelector` to each section describing containers, and to 
 kubectl apply -f deploy-ingress-nginx.yaml
 ```
 
-**TODO: continua qua.**
+The deployment should succeed. You can monitor it like described in [the first exercise](./web-hosting.md),
+using `kubectl`.
 
 ### Node selector on the cookies app
 
@@ -189,3 +190,104 @@ spec:
   type: ClusterIP
 ---
 ```
+
+Let's redeploy the fortune cookies app using the modified `cookies.yaml` that includes
+the node selector setting:
+
+```bash
+kubectl create namespace fortunecookies
+
+kubectl apply -n fortunecookies -f cookies.yaml
+```
+
+And finally let's deploy the ingress rules like in [the previous example](./mounting-volumes.md):
+
+```bash
+kubectl create namespace common-ingress
+
+cd ssl
+kubectl create secret tls neoteroi-xyz-tls \
+  --cert=neoteroi-xyz-tls.crt \
+  --key=neoteroi-xyz-tls.key \
+  -n common-ingress
+
+cd ../
+kubectl apply -n common-ingress -f common-ingress.yaml
+```
+
+## Hurray!
+
+It works! [https://www.neoteroi.xyz/cookies/](https://www.neoteroi.xyz/cookies/) :eyes:
+
+![Fortune Cookie Demo in Worker node](/K8sStudies/img/fortune-cookies-multi-nodes.png)
+
+However, to be absolutely certain that the process is simulated on a worker node, let's check entering the correct container.
+
+```bash
+docker ps
+```
+
+In the output, you can see:
+
+- the node dedicated to the `control-plane`
+- the worker node dedicated to the ingress, which is the one with ports mapped from the
+  host, named `kind-worker`.
+- the worker node dedicated to running apps (with `apps-node: "true"` label), named
+  `kind-worker2`, recognizable because it doesn't have mapped ports.
+
+```bash {linenums="1"}
+$ docker ps
+CONTAINER ID   IMAGE                  COMMAND                  CREATED          STATUS          PORTS                                      NAMES
+ae0f94c2dced   kindest/node:v1.33.1   "/usr/local/bin/entr…"   16 minutes ago   Up 16 minutes   0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp   kind-worker
+71aafd87e5c4   kindest/node:v1.33.1   "/usr/local/bin/entr…"   16 minutes ago   Up 16 minutes   127.0.0.1:35673->6443/tcp                  kind-control-plane
+11e5a2e13c17   kindest/node:v1.33.1   "/usr/local/bin/entr…"   16 minutes ago   Up 16 minutes                                              kind-worker2
+```
+
+We can verify that the _fortune cookies_ app is running in `kind-worker2` by entering
+the container and checking the processes:
+
+```bash
+# enter the container
+docker exec -it kind-worker2 bash
+
+# list processes
+ps aux
+```
+
+And true enough, you can see that the `uvicorn` process is running in the `kind-worker2`
+container, visible on lines 15-16 of the output below, matching the `CMD` parameter of
+the [demo apps `Dockerfile`](https://github.com/RobertoPrevato/SQLiteWebDemo/blob/main/Dockerfile#L46).:
+
+```bash {linenums="1" hl_lines="15-16"}
+root@kind-worker2:/# ps aux
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.0  0.0  20416 11368 ?        Ss   15:49   0:00 /sbin/init
+root          93  0.0  0.0  24824 10240 ?        Ss   15:49   0:00 /lib/systemd/systemd-journald
+root         108  1.2  0.3 2605304 61432 ?       Ssl  15:49   0:17 /usr/local/bin/containerd
+root         222  1.1  0.5 2639680 90528 ?       Ssl  15:50   0:14 /usr/bin/kubelet --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.con
+root         283  0.0  0.0 1233548 10604 ?       Sl   15:50   0:00 /usr/local/bin/containerd-shim-runc-v2 -namespace k8s.io -id bf1a20ef9bef832b
+root         301  0.0  0.0 1233804 10604 ?       Sl   15:50   0:00 /usr/local/bin/containerd-shim-runc-v2 -namespace k8s.io -id a3ced7b79cd27613
+65535        337  0.0  0.0   1020   640 ?        Ss   15:50   0:00 /pause
+65535        342  0.0  0.0   1020   640 ?        Ss   15:50   0:00 /pause
+root         382  0.0  0.3 1298256 59096 ?       Ssl  15:50   0:00 /usr/local/bin/kube-proxy --config=/var/lib/kube-proxy/config.conf --hostname
+root         471  0.0  0.2 1281608 46128 ?       Ssl  15:50   0:00 /bin/kindnetd
+root         740  0.0  0.0 1233868 10612 ?       Sl   15:57   0:00 /usr/local/bin/containerd-shim-runc-v2 -namespace k8s.io -id e1ea1d3886e2b34d
+65535        764  0.0  0.0   1020   640 ?        Ss   15:57   0:00 /pause
+root         832  0.0  0.0   2580  1408 ?        Ss   15:57   0:00 sh -c . venv/bin/activate && uvicorn "app.main:app" --host 0.0.0.0 --port 80
+root         851  0.2  0.4 330940 75880 ?        Sl   15:57   0:02 /home/venv/bin/python /home/venv/bin/uvicorn app.main:app --host 0.0.0.0 --po
+root        1005  0.3  0.0   4192  3328 pts/1    Ss   16:11   0:00 bash
+root        1013  0.0  0.0   8092  4096 pts/1    R+   16:11   0:00 ps aux
+```
+
+## Summary
+
+In this exercise, we created a multi-node cluster with *kind* and deployed the _Fortune
+Cookies_ app on a dedicated worker node. We also configured the ingress controller to
+run on a separate worker node, allowing us to better simulate a realistic Kubernetes
+environment.
+
+Although *kind* is primarily a tool for local development, the use of *labels* and
+*node selectors* to control pod placement is a fundamental concept in Kubernetes, and
+is also important to run production workloads.
+
+We also saw how to inspect processes running in a container.
