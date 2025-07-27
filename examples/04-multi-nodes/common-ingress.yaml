@@ -1,0 +1,46 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: common-ingress
+  namespace: common-ingress
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - neoteroi.xyz
+        - www.neoteroi.xyz
+      secretName: neoteroi-xyz-tls
+  rules:
+    - host: neoteroi.xyz
+      http:
+        paths:
+          - path: /cookies
+            pathType: Prefix
+            backend:
+              service:
+                name: fortune-cookies
+                port:
+                  number: 80
+    - host: www.neoteroi.xyz
+      http:
+        paths:
+          - path: /cookies
+            pathType: Prefix
+            backend:
+              service:
+                name: fortune-cookies
+                port:
+                  number: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fortune-cookies
+  namespace: common-ingress
+spec:
+  type: ExternalName
+  externalName: fortune-cookies.fortunecookies.svc.cluster.local
+  ports:
+    - port: 80
+      targetPort: 80

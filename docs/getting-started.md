@@ -12,7 +12,7 @@ To work with **Docker** and **Kubernetes**, I always used **Ubuntu** and the **C
 tools, without graphical user interfaces. I started using Docker in 2015. At that time,
 Docker was only supported on Linux and there was no [_Docker Desktop_](https://docs.docker.com/desktop/).
 Today I am still using the CLI, and I can recommend it. I have no interest in using
-_Docker Desktop_.
+_Docker Desktop_, nor in using Docker on _Windows_.
 
 I don't talk about [Podman](https://podman.io/), because I never used it, but I heard
 it is a good alternative to Docker.
@@ -35,7 +35,7 @@ To learn Docker, I recommend having:
 
 - A personal laptop or desktop with **Ubuntu 24.04** installed directly as main
   operating system.
-- Alternatively, a Windows machine with **WSL2** and **Ubuntu 24.04** installed.
+- Alternatively, a Windows machine with **WSL** and **Ubuntu 24.04** installed.
 
 I work successfully with both, and installing the tools was easy in both cases.
 
@@ -196,7 +196,9 @@ start learning Kubernetes without relying on cloud providers.
 
 ## Get the examples
 
-If you are interested in the examples of this repository, you can clone the repository at: [https://github.com/RobertoPrevato/K8sStudies/](https://github.com/RobertoPrevato/K8sStudies/).
+If you are interested in the examples of this repository, you can clone the repository
+at: [https://github.com/RobertoPrevato/K8sStudies/](https://github.com/RobertoPrevato/K8sStudies/)/
+and use the files in the `examples` folder.
 
 ## Next steps
 

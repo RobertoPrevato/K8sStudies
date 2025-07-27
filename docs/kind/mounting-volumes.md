@@ -239,6 +239,35 @@ projects.
 
 ///
 
+## Note about volumes
+
+The volume strategy recommended by GitHub Copilot, using `hostPath`, is only suitable
+for local development. For production, it is best using a [`PersistentVolume`](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) instead,
+which I will try using later in a [different exercise](./postgresql.md).
+
+Kubernetes supports many [kinds of volumes](https://kubernetes.io/docs/concepts/storage/volumes/)!
+
+A volume created with `hostPath` mounts a directory from the Kubernetes node's local
+filesystem into a pod.
+
+**hostPath** volumes:
+
+- Data is stored directly on the node’s disk at the specified path.
+- If the pod is rescheduled to another node, the data does not follow; it only exists
+  on the original node.
+- Not suitable for multi-node clusters or production, as it ties data to a specific
+  node.
+
+**PersistentVolume (PV)** volumes:
+
+- Abstract storage and can use networked storage (NFS, cloud disks, etc.).
+- Data persists independently of pods and nodes.
+- Pods can be rescheduled to any node and still access the same data via the PV.
+- Suitable for production and multi-node clusters.
+
+**Summary:** `hostPath` is for local, node-specific storage; `PersistentVolume` is for
+portable, cluster-wide persistent storage.
+
 ## Next steps
 
 Following a system restart, when I didn't have an internet connection, my application

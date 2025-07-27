@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fortune-cookies
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fortune-cookies
+  template:
+    metadata:
+      labels:
+        app: fortune-cookies
+    spec:
+      nodeSelector:
+        apps-node: "true"
+      containers:
+        - name: fortune-cookies
+          image: robertoprevato/fortunecookies:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: APP_ROUTE_PREFIX
+              value: cookies
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /cookies/
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /cookies/
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          volumeMounts:
+            - name: store-volume
+              mountPath: /home/store
+      volumes:
+        - name: store-volume
+          hostPath:
+            path: /home/stores/cookies
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fortune-cookies
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: fortune-cookies
+  type: ClusterIP
+---

@@ -72,7 +72,7 @@ that they _need_ to use their specific services and that they will never manage 
 achieve anything by themselves.
 
 For instance, when advertising tools like [*GitHub Codespaces*](https://github.com/features/codespaces)
-or [Azure DevBox](https://azure.microsoft.com/en-us/products/dev-box/), they say that
+or [*Azure DevBox*](https://azure.microsoft.com/en-us/products/dev-box/), they say that
 "creating a development environment is too hard", but in reality creating development
 environments today has never been easier, for most use cases.
 
@@ -108,10 +108,6 @@ Basic knowledge of the following technologies is required to follow my notes:
 
 Understanding of the web and networking is also helpful, as many of the examples
 involve deploying web applications in Kubernetes.
-
-Although I will try to include some quick-start guide for these technologies, I assume
-that you have a basic understanding of them, as they are essential for working with
-Kubernetes and containerization in general.
 
 The [getting started guide](./getting-started.md) includes instructions to prepare a
 development environment and recommended learning resources for beginners to learn the
