@@ -279,6 +279,182 @@ root        1005  0.3  0.0   4192  3328 pts/1    Ss   16:11   0:00 bash
 root        1013  0.0  0.0   8092  4096 pts/1    R+   16:11   0:00 ps aux
 ```
 
+## Following a restart…
+
+Following a restart of the cluster, the cluster took several minutes to become
+responsive.
+
+Initially it was giving a `Gateway Time Out` error, which is a common issue when the
+ingress controller is not ready to handle requests.
+
+![Gateway Time Out](/K8sStudies/img/fortune-cookies-gateway-time-out.png)
+
+I verified the fortune cookies app was working and it started quickly, using the
+commands:
+
+```bash
+kubectl get pods -n fortunecookies
+
+kubectl describe pod <pod-name> -n fortunecookies
+
+kubectl logs -p <pod-name> -n fortunecookies
+```
+
+```bash {linenums="1" hl_lines="1 6"}
+$ kubectl get pods -n fortunecookies
+
+NAME                               READY   STATUS    RESTARTS        AGE
+fortune-cookies-7d56c4cff7-trr8k   1/1     Running   1 (8m38s ago)   15h
+
+$ kubectl describe pod fortune-cookies-7d56c4cff7-trr8k -n fortunecookies
+Name:             fortune-cookies-7d56c4cff7-trr8k
+Namespace:        fortunecookies
+Priority:         0
+Service Account:  default
+Node:             kind-worker2/172.18.0.4
+Start Time:       Sat, 26 Jul 2025 17:57:14 +0200
+Labels:           app=fortune-cookies
+                  pod-template-hash=7d56c4cff7
+Annotations:      <none>
+Status:           Running
+IP:               10.244.2.2
+IPs:
+  IP:           10.244.2.2
+Controlled By:  ReplicaSet/fortune-cookies-7d56c4cff7
+Containers:
+  fortune-cookies:
+    Container ID:   containerd://7e44b8db8259e108020902359c6ae55e06cf1ca8db6f5518217a5172f9b0cef6
+    Image:          robertoprevato/fortunecookies:latest
+    Image ID:       docker.io/robertoprevato/fortunecookies@sha256:d8c00d5ee9fc4849b740b12a22b258a65ed52cc5d84b0a3115c0814af9a1a7ce
+    Port:           80/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Sun, 27 Jul 2025 08:59:23 +0200
+    Last State:     Terminated
+      Reason:       Unknown
+      Exit Code:    255
+      Started:      Sat, 26 Jul 2025 17:57:58 +0200
+      Finished:     Sun, 27 Jul 2025 08:59:14 +0200
+    Ready:          True
+    Restart Count:  1
+    Liveness:       http-get http://:80/cookies/ delay=15s timeout=1s period=20s #success=1 #failure=3
+    Readiness:      http-get http://:80/cookies/ delay=5s timeout=1s period=10s #success=1 #failure=3
+    Environment:
+      APP_ROUTE_PREFIX:  cookies
+    Mounts:
+      /home/store from store-volume (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-htxvt (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True
+  Initialized                 True
+  Ready                       True
+  ContainersReady             True
+  PodScheduled                True
+Volumes:
+  store-volume:
+    Type:          HostPath (bare host directory volume)
+    Path:          /home/stores/cookies
+    HostPathType:  Directory
+  kube-api-access-htxvt:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   BestEffort
+Node-Selectors:              apps-node=true
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason          Age    From     Message
+  ----    ------          ----   ----     -------
+  Normal  SandboxChanged  8m33s  kubelet  Pod sandbox changed, it will be killed and re-created.
+  Normal  Pulled          8m32s  kubelet  Container image "robertoprevato/fortunecookies:latest" already present on machine
+  Normal  Created         8m32s  kubelet  Created container: fortune-cookies
+  Normal  Started         8m32s  kubelet  Started container fortune-cookies
+```
+
+![Healthy fortune cookies container](/K8sStudies/img/fortune-cookies-healthy-k9s.png)
+
+While I was investigating the status of the ingress controller, the cluster started
+working.
+
+The logs of the `ingress-nginx-controller` showed that the error was caused by DNS
+resolution issues, indicating that the NGINX ingress controller was having trouble
+resolving the DNS name `fortune-cookies.fortunecookies.svc.cluster.local` using the
+cluster DNS service at `10.96.0.10:53`.
+
+```bash
+kubectl logs ingress-nginx-controller-5c47b49d7-8t69j -n ingress-nginx
+```
+
+```
+2025/07/27 07:05:13 [error] 47#47: *5409 lua udp socket read timed out, context: ngx.timer
+2025/07/27 07:05:13 [error] 47#47: *5409 recv() failed (111: Connection refused), context: ngx.timer
+2025/07/27 07:05:13 [error] 47#47: *5409 [lua] dns.lua:152: dns_lookup(): failed to query the DNS server for fortune-cookies.fortunecookies.svc.cluster.local:
+failed to receive reply from UDP server 10.96.0.10:53: timeout
+```
+
+According to _GitHub Copilot_, this is a common issue with multi-node clusters in *kind*,
+where the DNS service may not be fully initialized or reachable at the time the ingress
+controller starts.
+
+/// details | Chat with GitHub Copilot :octicons-copilot-16:.
+
+**RP:** Do you have any idea on why the cluster and the NGINX ingress took a very long
+time to start, following a system restart in my Multi-nodes Kind setup described in my
+documentation?
+
+**GitHub Copilot:** Yes, this is a common issue with multi-node *kind* clusters,
+especially after a system restart. Here are the most likely causes:
+
+1. **Docker Network Initialization Delay** After a system restart, Docker needs to
+   re-create its internal networks and start all containers. *Kind* clusters rely on
+   Docker networking, and sometimes the containers (nodes) start before the network is
+   fully ready, causing delays in pod scheduling and communication.
+
+2. **Pod Scheduling and Node Readiness** Kubernetes waits for all nodes to become
+   "Ready" before scheduling critical pods like the ingress controller. If any node is
+   slow to start (due to Docker or resource contention), the ingress controller and
+   other pods may be stuck in a pending or initializing state.
+
+3. **Volume Mounts and HostPath Issues** If you use `hostPath` volumes (as in your
+   setup), and the host directories are not available or are slow to mount after a
+   reboot, pods depending on those mounts may fail to start or restart repeatedly.
+
+4. **Image Pull/Container Startup Delays** If images are not cached locally or if there
+   are issues with the container runtime, pulling images or starting containers can take
+   longer after a restart.
+
+5. **Ingress Controller Probes** The NGINX ingress controller uses liveness/readiness
+   probes. If the controller starts before the network is fully functional, these probes
+   can fail, causing Kubernetes to restart the pod or mark it as "Unhealthy" until the
+   network stabilizes.
+
+6. **Resource Contention** On local machines, especially with limited CPU/RAM, starting
+   multiple Docker containers and all cluster components at once can overwhelm the
+   system, leading to slow startups.
+
+**What you can do:**
+- Wait a few minutes after system boot before starting the cluster, to let Docker and
+  its networks fully initialize.
+- Check `docker ps` and `docker network ls` to ensure all containers and networks are
+  up.
+- Use `kubectl get nodes` and `kubectl describe node <node>` to check node readiness and
+  events.
+- Review pod events with `kubectl describe pod <pod>` for clues (e.g., probe failures,
+  mount errors).
+- Consider using `kind delete cluster` and `kind create cluster --config kind.yaml`
+  after a reboot if issues persist.
+
+**Summary:** This is mostly due to Docker and Kubernetes components racing to initialize
+after a system restart, combined with the complexity of multi-node setups and hostPath
+mounts. It is a known limitation of running multi-node clusters with *kind* on local
+machines.
+
+///
+
 ## Summary
 
 In this exercise, we created a multi-node cluster with *kind* and deployed the _Fortune
@@ -289,5 +465,10 @@ environment.
 Although *kind* is primarily a tool for local development, the use of *labels* and
 *node selectors* to control pod placement is a fundamental concept in Kubernetes, and
 is also important to run production workloads.
+
+The cluster takes much longer to start after a system restart, which is a common issue
+with multi-node *kind* clusters. This seems to be due to the time it takes for Docker to
+initialize networks and containers, as well as the Kubernetes scheduler waiting for all
+nodes to become ready.
 
 We also saw how to inspect processes running in a container.

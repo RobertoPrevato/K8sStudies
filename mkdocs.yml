@@ -18,6 +18,7 @@ nav:
       - PostgreSQL: kind/postgresql.md
   - Diving deeper:
       - A bit of Docker history: diving-deeper/docker-history.md
+  - CHANGELOG: changelog.md
 
 theme:
   features:
