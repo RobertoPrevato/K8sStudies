@@ -1,8 +1,312 @@
-This page describes my next exercise, of running a [**PostgreSQL**](https://www.postgresql.org/) database in a
-local Kubernetes cluster managed with Kind.
+This page describes my next exercise, of running a
+single [**PostgreSQL**](https://www.postgresql.org/) database for local development. It covers:
 
-## Interesting resource
+- [X] Running PostgreSQL for development in Docker _without_ Kubernetes.
+- [X] Running PostgreSQL for development in Docker and Kubernetes, using a manifest (`Deployment + Service +
+mount`).
 
-[Zalando's postgres-operator](https://github.com/zalando/postgres-operator).
+This is relatively simple to set up and good for local development, but has the
+limitations of not supporting automatic failovers, backups, or scaling, and it is not
+suitable for production. To run a PostgreSQL environment in Kubernetes suitable for
+production or a pre-production environment, I plan to later study how to use [**Zalando's
+postgres-operator**](https://github.com/zalando/postgres-operator).
 
-_Work in progress..._ 🚧 🏗️
+<!--
+For this exercise, I decided to start with a simple deployment, using:
+
+- A *Kind* cluster with a single node, mapping port `5432` of the host to the port
+  `5432` of the control plane, and still using a `hostPath` like done in the
+  [_Mounting Volumes exercise_](./mounting-volumes.md).
+- A single deployment file.
+- [*pgAdmin*](https://www.pgadmin.org/) to test a connection to the PostgreSQL Server,
+  running *pgAdmin* in a Docker container.
+
+Later, I will try replacing the `hostPath` with a `PersistentVolume` and a
+`PersistentVolumeClaim` in Kind.
+-->
+
+## Running PostgreSQL in Docker without Kubernetes
+
+This information is interesting to compare the differences of running a single
+PostgreSQL server for local development, with and without Kubernetes.
+
+To run a PostgreSQL 17 server using a volume mount to persist data in the host:
+
+```bash
+# create a folder dedicated to persisting postgres
+mkdir -p $HOME/stores/postgres
+
+# start a container with PostgreSQL Server
+docker run --rm \
+  --name pg-docker \
+  -e POSTGRES_PASSWORD=docker \
+  -d \
+  -p 5432:5432 \
+  -v $HOME/docker/volumes/postgres:/var/lib/postgresql/data \
+  postgres:17
+```
+
+/// details | The docker command described.
+    type: example
+
+This command runs a PostgreSQL server in a Docker container named `pg-docker`:
+
+- `--rm`: Automatically removes the container when it stops.
+- `--name pg-docker`: Names the container `pg-docker`.
+- `-e POSTGRES_PASSWORD=docker`: Sets the PostgreSQL password to `docker`.
+- `-d`: Runs the container in detached (background) mode.
+- `-p 5432:5432`: Maps port 5432 on the host to port 5432 in the container.
+- `-v $HOME/docker/volumes/postgres:/var/lib/postgresql/data`: Mounts a host directory for persistent database storage.
+- `postgres:17`: Uses the official PostgreSQL 17 image.
+
+///
+
+To verify that the PostgreSQL Server is running, you can inspect the logs of the
+container with:
+
+```bash
+docker logs pg-docker
+```
+
+One of the log lines should say:
+
+```
+LOG:  database system is ready to accept connections
+```
+
+/// details | Verify that the process is listening.
+
+To verify the process is listening on port `5432`, run the following commands:
+
+```bash
+# Install with → sudo apt install net-tools
+netstat -an | grep 5432
+
+# or…
+ss -ltnp | grep 5432
+```
+
+They should display output like:
+
+```bash
+$ netstat -an | grep 5432
+tcp        0      0 0.0.0.0:5432            0.0.0.0:*               LISTEN
+
+$ ss -ltnp | grep 5432
+LISTEN 0      4096          0.0.0.0:5432       0.0.0.0:*
+```
+
+///
+
+### Connect using psql
+
+#### Using psql from the host
+
+To test a connection to the PostgreSQL database using the `psql` CLI, let's install the
+PostgreSQL client on the host.
+
+To install the client, follow the official [PostgreSQL instructions](https://www.postgresql.org/download/linux/ubuntu/):
+
+```bash
+sudo apt install curl ca-certificates
+sudo install -d /usr/share/postgresql-common/pgdg
+sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+. /etc/os-release
+sudo sh -c "echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $VERSION_CODENAME-pgdg main' > /etc/apt/sources.list.d/pgdg.list"
+sudo apt update
+sudo apt -y install postgresql-client-17
+```
+
+/// note | Requires extra packages.
+
+Skip this step if you don't want to install extra packages on your `Ubuntu` host. The
+following paragraph describes how to use the `psql` CLI from a Docker container.
+
+///
+
+Then, to connect to the PostgreSQL Server running in Docker:
+
+```bash
+PGPASSWORD=docker psql -h localhost -p 5432 -U postgres postgres
+```
+
+Here we can use **localhost** because when we started the Docker container, we used the
+option `-p 5432:5432`, which maps port `5432` on the host to port `5432` in the container.
+We are using **postgres** for user name and database name because these are the default
+values. If we wanted to use different values when starting the container, we could use
+the `POSTGRES_USER` and `POSTGRES_DB` env variables when starting the Docker container.
+
+If the connection succeeds, you should enter the `psql` shell:
+
+```bash
+psql (17.5 (Ubuntu 17.5-1.pgdg24.04+1))
+Type "help" for help.
+
+postgres=#
+```
+
+You can run the following command in the psql shell to show the connection is working
+and list all databases:
+
+```bash
+\l
+```
+
+```bash
+postgres=# \l
+                                                    List of databases
+   Name    |  Owner   | Encoding | Locale Provider |  Collate   |   Ctype    | Locale | ICU Rules |   Access privileges
+-----------+----------+----------+-----------------+------------+------------+--------+-----------+-----------------------
+ postgres  | postgres | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           |
+ template0 | postgres | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           | =c/postgres          +
+           |          |          |                 |            |            |        |           | postgres=CTc/postgres
+ template1 | postgres | UTF8     | libc            | en_US.utf8 | en_US.utf8 |        |           | =c/postgres          +
+           |          |          |                 |            |            |        |           | postgres=CTc/postgres
+(3 rows)
+```
+
+---
+
+The next paragraph describes how to run `psql` inside Docker.
+
+#### Using psql from Docker
+
+To test a connection using `psql` within a Docker container, you can run a second
+`postgres` container in interactive mode:
+
+```bash
+docker run --rm -it postgres:17 /bin/bash
+```
+
+However, in this case we cannot connect to the PostgreSQL server using `localhost`, as
+`localhost` inside a Docker container does not mean `localhost` on the host.
+
+To connect to the PostgreSQL database, find the IP address of the running container:
+
+```bash
+docker inspect pg-docker | grep IPAddress
+```
+
+In my case, it displays:
+
+```bash {hl_lines="3-4"}
+$ docker inspect pg-docker | grep IPAddress
+            "SecondaryIPAddresses": null,
+            "IPAddress": "172.17.0.3",
+                    "IPAddress": "172.17.0.3",
+```
+
+To connect to the PostgreSQL Server, use the following command:
+
+```bash
+PGPASSWORD=docker psql -h 172.17.0.3 -p 5432 -U postgres postgres
+```
+
+```bash
+root@ade51ee74b3c:/# PGPASSWORD=docker psql -h 172.17.0.3 -p 5432 -U postgres postgres
+psql (17.5 (Debian 17.5-1.pgdg120+1))
+Type "help" for help.
+
+postgres=#
+```
+
+### Connect using pgAdmin
+
+**pgAdmin** is a free and open-source administration and management tool for PostgreSQL
+databases. It provides a graphical user interface (GUI) for managing PostgreSQL servers,
+databases, and database objects. pgAdmin is widely used for tasks such as database
+creation, schema design, data management, and user administration.
+
+```bash
+docker run --rm \
+  -p 8080:80 \
+  --name pgadmin \
+  -e 'PGADMIN_DEFAULT_EMAIL=user@domain.com' \
+  -e 'PGADMIN_DEFAULT_PASSWORD=SuperSecret' \
+  dpage/pgadmin4
+```
+
+Then, navigate to [http://localhost:8080/](http://localhost:8080/) to access the local
+instance of *pgAdmin*.
+
+![pgAdmin sign-in](/K8sStudies/img/pgadmin-signin.png)
+
+To sign-in, use the email and password defined in the command above
+(`PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD`).
+
+Once logged in, the homepage looks like in the picture below.
+
+![pgAdmin home](/K8sStudies/img/pgadmin-home.png)
+
+To connect to the PostgreSQL Server:
+
+1. Open the [`Server dialog`](https://www.pgadmin.org/docs/pgadmin4/9.4/server_dialog.html)
+   clicking the right mouse button on _Servers_ in the top left corner of the page, then
+   `Register > Server…`.
+2. Insert the same parameters we used for the `psql` command in Docker: `postgres` for
+   username and database, `docker` password (the same used when starting the Docker
+   container for the local environment, and the IP of the Docker container like
+   described above).
+
+![pgAdmin server dialog](/K8sStudies/img/pgadmin-server-dialog.png)
+
+![pgAdmin connected server](/K8sStudies/img/pgadmin-connected-server.png)
+
+---
+
+## Running PostgreSQL in Docker with Kubernetes
+
+
+This time, instead of deleting the last cluster created for the [_Multi Nodes example_](./multi-nodes.md),
+let's create a new cluster specifying "db" for its name:
+
+```bash
+# ./examples/05-simple-postgres
+kind create cluster --name db --config kind.yaml
+
+kubectl cluster-info --context kind-db
+```
+
+Run the deployment that provisions the *PostgreSQL Server*:
+
+```bash
+# ./examples/05-simple-postgres
+kubectl apply -f simple-postgres.yaml
+```
+
+Wait for the pod to become ready:
+
+```bash
+kubectl wait --for=condition=ready pod -l app=postgres --timeout=120s
+```
+
+Inspect the logs of the container using the commands:
+
+```bash
+kubectl get pods
+
+kubectl logs <pod-name>
+```
+
+```bash {hl_lines="3 9 20"}
+$ kubectl get pods
+NAME                        READY   STATUS    RESTARTS   AGE
+postgres-597b764746-xgc6z   1/1     Running   0          27m
+
+$ kubectl logs postgres-597b764746-xgc6z
+
+PostgreSQL Database directory appears to contain a database; Skipping initialization
+
+2025-07-28 08:27:39.831 UTC [1] LOG:  starting PostgreSQL 17.5 (Debian 17.5-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-07-28 08:27:39.831 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-07-28 08:27:39.831 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-07-28 08:27:39.834 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-07-28 08:27:39.841 UTC [34] LOG:  database system was interrupted; last known up at 2025-07-27 21:01:31 UTC
+2025-07-28 08:27:40.074 UTC [34] LOG:  database system was not properly shut down; automatic recovery in progress
+2025-07-28 08:27:40.077 UTC [34] LOG:  redo starts at 0/194BFE0
+2025-07-28 08:27:40.077 UTC [34] LOG:  invalid record length at 0/194C100: expected at least 24, got 0
+2025-07-28 08:27:40.077 UTC [34] LOG:  redo done at 0/194C0C8 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2025-07-28 08:27:40.087 UTC [32] LOG:  checkpoint starting: end-of-recovery immediate wait
+2025-07-28 08:27:40.098 UTC [32] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.004 s, sync=0.002 s, total=0.015 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/194C100, redo lsn=0/194C100
+2025-07-28 08:27:40.103 UTC [1] LOG:  database system is ready to accept connections
+```

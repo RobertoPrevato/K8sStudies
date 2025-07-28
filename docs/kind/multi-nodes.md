@@ -1,10 +1,8 @@
-When I first tried *kind*, I was a bit surprised to see that it creates by default a
-single Docker container to simulate a whole cluster. I was expecting it would use at
-least two containers to separate the Kubernetes _control plane_ from a _worker node_,
-to mimic more closely a real Kubernetes environment.
-
-Anyway, Kind supports multi-node clusters. We can edit the _kind_ configuration file to
-include more nodes.
+When I first tried *kind*, I was a bit surprised to see it creates by default a single
+Docker container to simulate a whole cluster. I was expecting it would use at least two
+containers to separate the Kubernetes _control plane_ from a _worker node_, to mimic
+more closely a real Kubernetes environment. Anyway, Kind supports multi-node clusters.
+We can edit the _kind_ configuration file to include more nodes.
 
 ## Creating a cluster with multiple nodes
 
@@ -63,8 +61,7 @@ nodes:
         containerPath: /home/stores
 ```
 
-Let's delete the previous cluster and create a new one using the new
-configuration file.
+Let's delete the previous cluster and create a new one using the new configuration file.
 
 ```bash
 kind delete cluster
@@ -119,7 +116,8 @@ spec:
         ingress-node: "true"
 ```
 
-I tried to apply a `nodeSelector` to each section describing containers, and to deploy the ingress this way.
+I applied a `nodeSelector` to each section describing containers, to deploy the ingress
+controller on a node with the label `ingress-node: "true"`.
 
 ```bash
 kubectl apply -f deploy-ingress-nginx.yaml
@@ -221,7 +219,8 @@ It works! [https://www.neoteroi.xyz/cookies/](https://www.neoteroi.xyz/cookies/)
 
 ![Fortune Cookie Demo in Worker node](/K8sStudies/img/fortune-cookies-multi-nodes.png)
 
-However, to be absolutely certain that the process is simulated on a worker node, let's check entering the correct container.
+However, to be absolutely certain that the process is simulated on a worker node, let's
+check entering the correct container.
 
 ```bash
 docker ps
@@ -281,8 +280,7 @@ root        1013  0.0  0.0   8092  4096 pts/1    R+   16:11   0:00 ps aux
 
 ## Following a restart…
 
-Following a restart of the cluster, the cluster took several minutes to become
-responsive.
+Following a restart of the cluster, the system took several minutes to become responsive.
 
 Initially it was giving a `Gateway Time Out` error, which is a common issue when the
 ingress controller is not ready to handle requests.
@@ -377,7 +375,7 @@ Events:
 
 ![Healthy fortune cookies container](/K8sStudies/img/fortune-cookies-healthy-k9s.png)
 
-While I was investigating the status of the ingress controller, the cluster started
+While I was investigating the status of the ingress controller, the system started
 working.
 
 The logs of the `ingress-nginx-controller` showed that the error was caused by DNS
@@ -399,6 +397,8 @@ failed to receive reply from UDP server 10.96.0.10:53: timeout
 According to _GitHub Copilot_, this is a common issue with multi-node clusters in *kind*,
 where the DNS service may not be fully initialized or reachable at the time the ingress
 controller starts.
+
+This issue, however, does not occur at every restart. In some cases, the system becomes available more quickly, likely depending on the order in which pods are spun up.
 
 /// details | Chat with GitHub Copilot :octicons-copilot-16:.
 
@@ -462,8 +462,8 @@ Cookies_ app on a dedicated worker node. We also configured the ingress controll
 run on a separate worker node, allowing us to better simulate a realistic Kubernetes
 environment.
 
-Although *kind* is primarily a tool for local development, the use of *labels* and
-*node selectors* to control pod placement is a fundamental concept in Kubernetes, and
+Although *kind* is primarily a tool for local development, the use of **labels** and
+**node selectors** to control pod placement is a fundamental concept in Kubernetes, and
 is also important to run production workloads.
 
 The cluster takes much longer to start after a system restart, which is a common issue
