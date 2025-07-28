@@ -1,7 +1,7 @@
 This page describes my next exercise, of running a
 single [**PostgreSQL**](https://www.postgresql.org/) database for local development. It covers:
 
-- [X] Running PostgreSQL for development in Docker _without_ Kubernetes.
+- [X] Running PostgreSQL for development in Docker without Kubernetes.
 - [X] Running PostgreSQL for development in Docker and Kubernetes, using a manifest (`Deployment + Service +
 mount`).
 
@@ -30,7 +30,8 @@ Later, I will try replacing the `hostPath` with a `PersistentVolume` and a
 This information is interesting to compare the differences of running a single
 PostgreSQL server for local development, with and without Kubernetes.
 
-To run a PostgreSQL 17 server using a volume mount to persist data in the host:
+To run a PostgreSQL 17 server using a volume mount to persist data in the host, run
+the following commands, replacing `***` with the desired password:
 
 ```bash
 # create a folder dedicated to persisting postgres
@@ -39,12 +40,14 @@ mkdir -p $HOME/stores/postgres
 # start a container with PostgreSQL Server
 docker run --rm \
   --name pg-docker \
-  -e POSTGRES_PASSWORD=docker \
+  -e POSTGRES_PASSWORD=*** \
   -d \
   -p 5432:5432 \
   -v $HOME/docker/volumes/postgres:/var/lib/postgresql/data \
   postgres:17
 ```
+
+Select the desired password, for `POSTGRES_PASSWORD`.
 
 /// details | The docker command described.
     type: example
@@ -53,7 +56,7 @@ This command runs a PostgreSQL server in a Docker container named `pg-docker`:
 
 - `--rm`: Automatically removes the container when it stops.
 - `--name pg-docker`: Names the container `pg-docker`.
-- `-e POSTGRES_PASSWORD=docker`: Sets the PostgreSQL password to `docker`.
+- `-e POSTGRES_PASSWORD=***`: Sets the desired PostgreSQL password.
 - `-d`: Runs the container in detached (background) mode.
 - `-p 5432:5432`: Maps port 5432 on the host to port 5432 in the container.
 - `-v $HOME/docker/volumes/postgres:/var/lib/postgresql/data`: Mounts a host directory for persistent database storage.
@@ -127,7 +130,7 @@ following paragraph describes how to use the `psql` CLI from a Docker container.
 Then, to connect to the PostgreSQL Server running in Docker:
 
 ```bash
-PGPASSWORD=docker psql -h localhost -p 5432 -U postgres postgres
+PGPASSWORD=*** psql -h localhost -p 5432 -U postgres postgres
 ```
 
 Here we can use **localhost** because when we started the Docker container, we used the
@@ -199,11 +202,11 @@ $ docker inspect pg-docker | grep IPAddress
 To connect to the PostgreSQL Server, use the following command:
 
 ```bash
-PGPASSWORD=docker psql -h 172.17.0.3 -p 5432 -U postgres postgres
+PGPASSWORD=*** psql -h 172.17.0.3 -p 5432 -U postgres postgres
 ```
 
 ```bash
-root@ade51ee74b3c:/# PGPASSWORD=docker psql -h 172.17.0.3 -p 5432 -U postgres postgres
+root@ade51ee74b3c:/# PGPASSWORD=*** psql -h 172.17.0.3 -p 5432 -U postgres postgres
 psql (17.5 (Debian 17.5-1.pgdg120+1))
 Type "help" for help.
 
@@ -217,12 +220,17 @@ databases. It provides a graphical user interface (GUI) for managing PostgreSQL 
 databases, and database objects. pgAdmin is widely used for tasks such as database
 creation, schema design, data management, and user administration.
 
+To run a container hosting a `pgAdmin` server, use the following command, replacing
+`PGADMIN_DEFAULT_PASSWORD` with the desired password. The email and password are used on
+`localhost` to sign-in to the pgAdmin GUI.
+
 ```bash
 docker run --rm \
   -p 8080:80 \
   --name pgadmin \
   -e 'PGADMIN_DEFAULT_EMAIL=user@domain.com' \
-  -e 'PGADMIN_DEFAULT_PASSWORD=SuperSecret' \
+  -e 'PGADMIN_DEFAULT_PASSWORD=***' \
+  -d \
   dpage/pgadmin4
 ```
 
@@ -252,10 +260,20 @@ To connect to the PostgreSQL Server:
 
 ![pgAdmin connected server](/K8sStudies/img/pgadmin-connected-server.png)
 
+### Cleaning up
+
+Stop the Docker containers. They will be deleted, as they were created using the option
+`--rm`.
+
+```bash
+docker stop pg-docker
+
+docker stop pgadmin
+```
+
 ---
 
 ## Running PostgreSQL in Docker with Kubernetes
-
 
 This time, instead of deleting the last cluster created for the [_Multi Nodes example_](./multi-nodes.md),
 let's create a new cluster specifying "db" for its name:
@@ -265,6 +283,16 @@ let's create a new cluster specifying "db" for its name:
 kind create cluster --name db --config kind.yaml
 
 kubectl cluster-info --context kind-db
+```
+
+Create a secret for the PostgreSQL admin password, which is referenced by name in the
+manifest, replacing `mypassword` with the desired secret:
+
+```bash
+kubectl create secret \
+  generic \
+  postgres-secret \
+  --from-literal=POSTGRES_PASSWORD=mypassword
 ```
 
 Run the deployment that provisions the *PostgreSQL Server*:
@@ -278,6 +306,10 @@ Wait for the pod to become ready:
 
 ```bash
 kubectl wait --for=condition=ready pod -l app=postgres --timeout=120s
+```
+
+```bash
+PGPASSWORD=mypassword psql -h localhost -p 30432 -U myuser mydb
 ```
 
 Inspect the logs of the container using the commands:

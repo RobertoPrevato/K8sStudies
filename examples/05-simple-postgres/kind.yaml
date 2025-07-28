@@ -6,6 +6,9 @@ nodes:
       - containerPort: 5432
         hostPort: 5432
         protocol: TCP
+      - containerPort: 30432
+        hostPort: 30432
+        protocol: TCP
     extraMounts:
       - hostPath: /home/ropt/stores
         containerPath: /home/stores
