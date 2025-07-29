@@ -1,29 +1,21 @@
-This page describes my next exercise, of running a
-single [**PostgreSQL**](https://www.postgresql.org/) database for local development. It covers:
+This page describes my next exercise, of running a single
+[**PostgreSQL**](https://www.postgresql.org/) database for local development. It covers:
 
 - [X] Running PostgreSQL for development in Docker without Kubernetes.
-- [X] Running PostgreSQL for development in Docker and Kubernetes, using a manifest (`Deployment + Service +
-mount`).
+- [X] Running PostgreSQL for development in Docker and Kubernetes, using a manifest.
 
-This is relatively simple to set up and good for local development, but has the
+This is relatively simple to set up and sufficient for local development, but has the
 limitations of not supporting automatic failovers, backups, or scaling, and it is not
-suitable for production. To run a PostgreSQL environment in Kubernetes suitable for
-production or a pre-production environment, I plan to later study how to use [**Zalando's
-postgres-operator**](https://github.com/zalando/postgres-operator).
+suitable for production. To run a PostgreSQL environment in Kubernetes that is suitable for
+production or to _mimic_ a production environment, I plan to later study how to use
+one of the available [_Operators_](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
+for PostgreSQL, such as:
 
-<!--
-For this exercise, I decided to start with a simple deployment, using:
+- [_CloudNativePG_](https://cloudnative-pg.io/documentation/1.23/).
+- [_Zalando's postgres-operator_](https://github.com/zalando/postgres-operator).
 
-- A *Kind* cluster with a single node, mapping port `5432` of the host to the port
-  `5432` of the control plane, and still using a `hostPath` like done in the
-  [_Mounting Volumes exercise_](./mounting-volumes.md).
-- A single deployment file.
-- [*pgAdmin*](https://www.pgadmin.org/) to test a connection to the PostgreSQL Server,
-  running *pgAdmin* in a Docker container.
-
-Later, I will try replacing the `hostPath` with a `PersistentVolume` and a
-`PersistentVolumeClaim` in Kind.
--->
+In this page I will also describe how to use `psql` and `pgAdmin` to connect to a
+PostgreSQL Server.
 
 ## Running PostgreSQL in Docker without Kubernetes
 
@@ -31,7 +23,7 @@ This information is interesting to compare the differences of running a single
 PostgreSQL server for local development, with and without Kubernetes.
 
 To run a PostgreSQL 17 server using a volume mount to persist data in the host, run
-the following commands, replacing `***` with the desired password:
+the following commands, replacing `******` with the desired password:
 
 ```bash
 # create a folder dedicated to persisting postgres
@@ -40,7 +32,7 @@ mkdir -p $HOME/stores/postgres
 # start a container with PostgreSQL Server
 docker run --rm \
   --name pg-docker \
-  -e POSTGRES_PASSWORD=*** \
+  -e POSTGRES_PASSWORD=****** \
   -d \
   -p 5432:5432 \
   -v $HOME/docker/volumes/postgres:/var/lib/postgresql/data \
@@ -56,7 +48,7 @@ This command runs a PostgreSQL server in a Docker container named `pg-docker`:
 
 - `--rm`: Automatically removes the container when it stops.
 - `--name pg-docker`: Names the container `pg-docker`.
-- `-e POSTGRES_PASSWORD=***`: Sets the desired PostgreSQL password.
+- `-e POSTGRES_PASSWORD=******`: Sets the desired PostgreSQL password.
 - `-d`: Runs the container in detached (background) mode.
 - `-p 5432:5432`: Maps port 5432 on the host to port 5432 in the container.
 - `-v $HOME/docker/volumes/postgres:/var/lib/postgresql/data`: Mounts a host directory for persistent database storage.
@@ -130,7 +122,7 @@ following paragraph describes how to use the `psql` CLI from a Docker container.
 Then, to connect to the PostgreSQL Server running in Docker:
 
 ```bash
-PGPASSWORD=*** psql -h localhost -p 5432 -U postgres postgres
+PGPASSWORD=****** psql -h localhost -p 5432 -U postgres postgres
 ```
 
 Here we can use **localhost** because when we started the Docker container, we used the
@@ -202,11 +194,11 @@ $ docker inspect pg-docker | grep IPAddress
 To connect to the PostgreSQL Server, use the following command:
 
 ```bash
-PGPASSWORD=*** psql -h 172.17.0.3 -p 5432 -U postgres postgres
+PGPASSWORD=****** psql -h 172.17.0.3 -p 5432 -U postgres postgres
 ```
 
 ```bash
-root@ade51ee74b3c:/# PGPASSWORD=*** psql -h 172.17.0.3 -p 5432 -U postgres postgres
+root@ade51ee74b3c:/# PGPASSWORD=****** psql -h 172.17.0.3 -p 5432 -U postgres postgres
 psql (17.5 (Debian 17.5-1.pgdg120+1))
 Type "help" for help.
 
@@ -229,7 +221,7 @@ docker run --rm \
   -p 8080:80 \
   --name pgadmin \
   -e 'PGADMIN_DEFAULT_EMAIL=user@domain.com' \
-  -e 'PGADMIN_DEFAULT_PASSWORD=***' \
+  -e 'PGADMIN_DEFAULT_PASSWORD=******' \
   -d \
   dpage/pgadmin4
 ```
@@ -276,14 +268,34 @@ docker stop pgadmin
 ## Running PostgreSQL in Docker with Kubernetes
 
 This time, instead of deleting the last cluster created for the [_Multi Nodes example_](./multi-nodes.md),
-let's create a new cluster specifying "db" for its name:
+let's create a new cluster specifying "db" for its name.
+
+For this exercise, I will **not** configure a load balancer to permanently
+expose the PostgreSQL Server, but instead use [**kubectl port-forward**](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
+to connect to the service. For this reason, `kind.yaml` does not include extra port
+mappings.
 
 ```bash
-# ./examples/05-simple-postgres
+# ./examples/05-single-postgres
 kind create cluster --name db --config kind.yaml
 
 kubectl cluster-info --context kind-db
 ```
+
+/// admonition | Extra port mappings without a load balancer wouldn't work.
+    type: danger
+
+Configuring `extraPortMappings` for port `5432` for the `Kind`
+node without configuring a load balancer wouldn't work to connect from the host.
+I haven't had the time, yet, to try [_MetalLB_](https://metallb.io/) to configure a
+load balancer to expose the port `5432`. Rather than investing so much time into running
+a single PostgreSQL Server, I prefer dedicating time to using [_operators_](./postgresql-operators.md).
+
+<!--TODO: try MetalLB with Kind?-->
+
+///
+
+`single-postgres.yaml` contains only a
 
 Create a secret for the PostgreSQL admin password, which is referenced by name in the
 manifest, replacing `mypassword` with the desired secret:
@@ -298,8 +310,8 @@ kubectl create secret \
 Run the deployment that provisions the *PostgreSQL Server*:
 
 ```bash
-# ./examples/05-simple-postgres
-kubectl apply -f simple-postgres.yaml
+# ./examples/05-single-postgres
+kubectl apply -f single-postgres.yaml
 ```
 
 Wait for the pod to become ready:
@@ -309,8 +321,10 @@ kubectl wait --for=condition=ready pod -l app=postgres --timeout=120s
 ```
 
 ```bash
-PGPASSWORD=mypassword psql -h localhost -p 30432 -U myuser mydb
+PGPASSWORD=mypassword psql -h localhost -p 5432 -U myuser mydb
 ```
+
+/// details | Inspecting the logs :eyes:.
 
 Inspect the logs of the container using the commands:
 
@@ -342,3 +356,25 @@ PostgreSQL Database directory appears to contain a database; Skipping initializa
 2025-07-28 08:27:40.098 UTC [32] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.004 s, sync=0.002 s, total=0.015 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/194C100, redo lsn=0/194C100
 2025-07-28 08:27:40.103 UTC [1] LOG:  database system is ready to accept connections
 ```
+
+///
+
+To connect to the PostgreSQL Server, as we didn't configure and ingress in this case,
+we can use `kubectl port-forward` to create a tunnel to the service defined in the
+manifest.
+
+```bash
+kubectl port-forward svc/postgres 5432:5432
+```
+
+```bash
+$ PGPASSWORD=****** psql -h localhost -p 5432 -U myuser mydb
+psql (17.5 (Ubuntu 17.5-1.pgdg24.04+1))
+Type "help" for help.
+
+mydb=#
+```
+
+## Next steps
+
+In my next exercise, I will practice with [_PostgreSQL Operators_](./postgresql-operators.md).
