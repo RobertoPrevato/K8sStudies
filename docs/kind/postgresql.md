@@ -2,12 +2,13 @@ This page describes my next exercise, of running a single
 [**PostgreSQL**](https://www.postgresql.org/) database for local development. It covers:
 
 - [X] Running PostgreSQL for development in Docker without Kubernetes.
-- [X] Running PostgreSQL for development in Docker and Kubernetes, using a manifest.
+- [X] Running PostgreSQL for development in Docker and Kubernetes, without a load balancer.
+- [X] Running PostgreSQL for development in Docker and Kubernetes, with a load balancer.
 
 This is relatively simple to set up and sufficient for local development, but has the
 limitations of not supporting automatic failovers, backups, or scaling, and it is not
 suitable for production. To run a PostgreSQL environment in Kubernetes that is suitable for
-production or to _mimic_ a production environment, I plan to later study how to use
+production or to mimic a production environment, I plan to later study how to use
 one of the available [_Operators_](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 for PostgreSQL, such as:
 
@@ -244,9 +245,9 @@ To connect to the PostgreSQL Server:
    clicking the right mouse button on _Servers_ in the top left corner of the page, then
    `Register > Server…`.
 2. Insert the same parameters we used for the `psql` command in Docker: `postgres` for
-   username and database, `docker` password (the same used when starting the Docker
+   username and database, and the password used when starting the Docker
    container for the local environment, and the IP of the Docker container like
-   described above).
+   described above.
 
 ![pgAdmin server dialog](/K8sStudies/img/pgadmin-server-dialog.png)
 
@@ -268,10 +269,10 @@ docker stop pgadmin
 ## Running PostgreSQL in Docker with Kubernetes
 
 This time, instead of deleting the last cluster created for the [_Multi Nodes example_](./multi-nodes.md),
-let's create a new cluster specifying "db" for its name.
+I decided to create a new cluster named "db".
 
-For this exercise, I will **not** configure a load balancer to permanently
-expose the PostgreSQL Server, but instead use [**kubectl port-forward**](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
+For now, I will not configure a load balancer to expose the PostgreSQL Server, but
+use instead [**kubectl port-forward**](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
 to connect to the service. For this reason, `kind.yaml` does not include extra port
 mappings.
 
@@ -287,11 +288,6 @@ kubectl cluster-info --context kind-db
 
 Configuring `extraPortMappings` for port `5432` for the `Kind`
 node without configuring a load balancer wouldn't work to connect from the host.
-I haven't had the time, yet, to try [_MetalLB_](https://metallb.io/) to configure a
-load balancer to expose the port `5432`. Rather than investing so much time into running
-a single PostgreSQL Server, I prefer dedicating time to using [_operators_](./postgresql-operators.md).
-
-<!--TODO: try MetalLB with Kind?-->
 
 ///
 
@@ -373,6 +369,81 @@ psql (17.5 (Ubuntu 17.5-1.pgdg24.04+1))
 Type "help" for help.
 
 mydb=#
+```
+
+### Using a Load Balancer
+
+Later I wanted to deploy a PostgreSQL Server again, but this time making it accessible
+using a _Load Balancer_ instead of using `port-forward`. To implement the _Load Balancer_
+in Kind, I initially tried using _MetalLB_, which is a popular tool when working with Kubernetes
+outside of cloud environments. According to _MetalLB_'s documentation, load balancers
+for bare-metal clusters (without using cloud vendors) in Kubernetes are not
+"first class citizens". However, I had issues making _MetalLB_ work with Kind, and I
+finally decided to try using the _Load Balancer_ [features offered by Kind](https://kind.sigs.k8s.io/docs/user/loadbalancer).
+
+/// note | Installing Cloud Provider Kind.
+
+To install `Cloud Provider Kind`, follow [the documentation](https://github.com/kubernetes-sigs/cloud-provider-kind?tab=readme-ov-file#install).
+One way is to download one of the [released binaries](https://github.com/kubernetes-sigs/cloud-provider-kind/releases).
+
+```bash
+wget https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.7.0/cloud-provider-kind_0.7.0_linux_amd64.tar.gz
+
+tar -xzf cloud-provider-kind_0.7.0_linux_amd64.tar.gz
+
+sudo mv cloud-provider-kind /usr/local/bin/
+```
+
+///
+
+Start `cloud-provider-kind` in a different terminal:
+
+```bash
+cloud-provider-kind
+```
+
+/// admonition | MetalLB and Kind.
+    type: warning
+
+I tried using MetalLB with Kind, also following relatively recent tutorials,
+but all my attempts failed because of parts that were not working. I finally
+gave up and decided to use the _Load Balancer_ [features offered by Kind](https://kind.sigs.k8s.io/docs/user/loadbalancer).
+
+///
+
+Delete the `db` cluster, and recreate it using the `kind2.yaml` file.
+
+```bash
+# ./examples/05-single-postgres
+kind delete cluster --name db
+
+kind create cluster --name db --config kind2.yaml
+
+# create postgres
+kubectl create secret \
+  generic \
+  postgres-secret \
+  --from-literal=POSTGRES_PASSWORD=mypassword
+
+kubectl apply -f single-postgres-lb.yaml
+```
+
+Wait for the PostgreSQL Service to become available:
+
+```bash
+kubectl wait --for=condition=ready pod -l app=postgres --timeout=120s
+```
+
+Obtain the IP address of the load balancer:
+
+```bash
+LB_IP=$(kubectl get svc/postgres -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+```
+
+Try connecting using `psql`:
+
+```bash
+PGPASSWORD=mypassword psql -h $LB_IP -p 5432 -U myuser mydb
 ```
 
 ## Next steps

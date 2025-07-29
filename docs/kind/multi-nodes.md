@@ -280,7 +280,7 @@ root        1013  0.0  0.0   8092  4096 pts/1    R+   16:11   0:00 ps aux
 
 ## Following a restart…
 
-Following a restart of the cluster, the system took several minutes to become responsive.
+Following a restart of the cluster, the system took several minutes to become responsive. This issue happened only once in several system restarts.
 
 Initially it was giving a `Gateway Time Out` error, which is a common issue when the
 ingress controller is not ready to handle requests.
