@@ -37,7 +37,7 @@ The `SQLite` database expected by the application can be created using [*Alembic
 Since I am still practicing with *kind*, I realized I needed to configure my *kind*
 cluster to mount a folder from my host machine to the containers running in the cluster.
 
-I decided to create a folder in my home directory, called "stores", planning to create a
+I decided to create a folder in my home directory, named "stores", planning to create a
 subfolder for each application I want to run in the cluster. In this case, I created a
 `cookies` subfolder to store the SQLite database for the fortune cookies application:
 

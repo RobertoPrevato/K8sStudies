@@ -5,6 +5,7 @@ This page introduces the basics to start learning Kubernetes:
 - [X] Preparing a development environment.
 - [X] Recommended learning resources for beginners.
 - [X] Obtaining the examples of this repository.
+- [X] Offering an overview of _Kubernetes_ distributions.
 
 ## Preparing a development environment
 
@@ -117,11 +118,11 @@ Kubernetes clusters in Docker containers.
 I also tried [MiniKube](https://minikube.sigs.k8s.io/docs/), but I am currently focused
 on Kind and this is what I will use in my first notes.
 
-Using *Kind* or *MiniKube* is convenient for development and testing purposes, because
-they allow you to run a Kubernetes cluster on your local machine without the need for a
-full-fledged cloud provider. When I started studying Kubernetes, at first I used [Azure Kubernetes Service
-(AKS)](https://azure.microsoft.com/en-us/products/kubernetes-service), but it is **very
-expensive** to run such service just for learning purposes.
+Using *Kind*, *MiniKube*, or a similar tool, is convenient for development and testing
+purposes, because they allow you to run a Kubernetes cluster on your local machine
+without the need for a full-fledged cloud provider. When I started studying Kubernetes,
+at first I used [Azure Kubernetes Service (AKS)](https://azure.microsoft.com/en-us/products/kubernetes-service),
+but it is **very expensive** to run such service just for learning purposes.
 
 Always relying on cloud providers can lead to vendor lock-in, which defeats one of the
 [best reasons for using Kubernetes](./index.md#a-foreword-on-vendor-lock-in)
@@ -186,6 +187,18 @@ If necessary, I recommend also:
 
 - [The Linux command line for beginners](https://ubuntu.com/tutorials/command-line-for-beginners#1-overview)
 
+## Other Kubernetes distributions
+
+Besides *Kind* and *MiniKube* mentioned above, there are more ways to install Kubernetes.
+
+| Name                                                                     | Purpose                                                                                                                                                                        | Production capable? |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| [**Kubeadm**](https://kubernetes.io/docs/reference/setup-tools/kubeadm/) | Tool for bootstrapping production-grade Kubernetes clusters.                                                                                                                   | **Yes**             |
+| [**MicroK8s**](https://microk8s.io/)                                     | Lightweight Kubernetes distribution developed by *Canonical* (the organization behind *Ubuntu*). Fast, production-capable, can be used on small or edge devices.               | **Yes**             |
+| [**K3s**](https://k3s.io/)                                               | K3s is a highly available, certified Kubernetes distribution designed for production workloads in unattended, resource-constrained, remote locations or inside IoT appliances. | **Yes**             |
+| [**minikube**](https://minikube.sigs.k8s.io/docs/)                       | For local development and testing, minikube runs Kubernetes clusters supporting several ways to run the nodes (Docker, Podman, or virtual machine managers).                   | **No**              |
+| [**Kind**](https://kind.sigs.k8s.io/)                                    | For local development and testing, Kind (Kubernetes IN Docker) runs Kubernetes clusters using Docker or Podman containers.                                                     | **No**              |
+
 ## Summary
 
 Preparing a development environment for learning Kubernetes is straightforward, and it
@@ -197,7 +210,7 @@ start learning Kubernetes without relying on cloud providers.
 ## Get the examples
 
 If you are interested in the examples of this repository, you can clone the repository
-at: [https://github.com/RobertoPrevato/K8sStudies/](https://github.com/RobertoPrevato/K8sStudies/)/
+at: [https://github.com/RobertoPrevato/K8sStudies/](https://github.com/RobertoPrevato/K8sStudies/)
 and use the files in the `examples` folder.
 
 ## Next steps
