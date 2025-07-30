@@ -64,11 +64,7 @@ container with:
 docker logs pg-docker
 ```
 
-One of the log lines should say:
-
-```
-LOG:  database system is ready to accept connections
-```
+One of the log lines should say: _database system is ready to accept connections_.
 
 /// details | Verify that the process is listening.
 
@@ -162,8 +158,6 @@ postgres=# \l
 ```
 
 ---
-
-The next paragraph describes how to run `psql` inside Docker.
 
 #### Using psql from Docker
 
@@ -269,7 +263,7 @@ docker stop pgadmin
 ## Running PostgreSQL in Docker with Kubernetes
 
 This time, instead of deleting the last cluster created for the [_Multi Nodes example_](./multi-nodes.md),
-I decided to create a new cluster named "db".
+I decided to create a new one named "db".
 
 For now, I will not configure a load balancer to expose the PostgreSQL Server, but
 use instead [**kubectl port-forward**](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/)
@@ -282,16 +276,6 @@ kind create cluster --name db --config kind.yaml
 
 kubectl cluster-info --context kind-db
 ```
-
-/// admonition | Extra port mappings without a load balancer wouldn't work.
-    type: danger
-
-Configuring `extraPortMappings` for port `5432` for the `Kind`
-node without configuring a load balancer wouldn't work to connect from the host.
-
-///
-
-`single-postgres.yaml` contains only a
 
 Create a secret for the PostgreSQL admin password, which is referenced by name in the
 manifest, replacing `mypassword` with the desired secret:
@@ -316,11 +300,7 @@ Wait for the pod to become ready:
 kubectl wait --for=condition=ready pod -l app=postgres --timeout=120s
 ```
 
-```bash
-PGPASSWORD=mypassword psql -h localhost -p 5432 -U myuser mydb
-```
-
-/// details | Inspecting the logs :eyes:.
+/// details | Inspecting the logs.
 
 Inspect the logs of the container using the commands:
 
@@ -355,9 +335,8 @@ PostgreSQL Database directory appears to contain a database; Skipping initializa
 
 ///
 
-To connect to the PostgreSQL Server, as we didn't configure and ingress in this case,
-we can use `kubectl port-forward` to create a tunnel to the service defined in the
-manifest.
+To connect to the PostgreSQL Server, we can use `kubectl port-forward` to create a
+tunnel to the service defined in the manifest.
 
 ```bash
 kubectl port-forward svc/postgres 5432:5432
@@ -370,6 +349,20 @@ Type "help" for help.
 
 mydb=#
 ```
+
+/// admonition | Issues with extra port mappings.
+    type: danger
+
+I also tried configuring `extraPortMappings` in the `Kind` node to connect to the
+PostgreSQL server, but that doesn't work.
+
+According to GitHub Copilot:
+
+> You cannot connect to PostgreSQL using the NodePort address with Kind's extraPortMappings because Kind does not natively support forwarding traffic from the host to service NodePorts inside the cluster without a proper load balancer or additional networking setup.
+
+> This is a known limitation: mapping a host port to a container port in Kind only exposes the port on the control-plane node's container, not directly to the Kubernetes service's NodePort. The NodePort is accessible from within the Kind network, but not from your host machine unless you use a load balancer or kubectl port-forward.
+
+///
 
 ### Using a Load Balancer
 
@@ -408,16 +401,18 @@ cloud-provider-kind
 I tried using MetalLB with Kind, also following relatively recent tutorials,
 but all my attempts failed because of parts that were not working. I finally
 gave up and decided to use the _Load Balancer_ [features offered by Kind](https://kind.sigs.k8s.io/docs/user/loadbalancer).
+I will try using MetalLB again with real nodes, when using `Kubeadm` to setup a
+real Kubernetes cluster.
 
 ///
 
-Delete the `db` cluster, and recreate it using the `kind2.yaml` file.
+Delete the `db` cluster, and recreate it using the `kind.yaml` file.
 
 ```bash
 # ./examples/05-single-postgres
 kind delete cluster --name db
 
-kind create cluster --name db --config kind2.yaml
+kind create cluster --name db --config kind.yaml
 
 # create postgres
 kubectl create secret \

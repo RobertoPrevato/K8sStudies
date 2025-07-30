@@ -16,7 +16,7 @@ nav:
       - Loading Docker Images: kind/loading-docker-images.md
       - Multi Nodes: kind/multi-nodes.md
       - PostgreSQL: kind/postgresql.md
-      # - PostgreSQL Operators: kind/postgresql-operators.md
+      - PostgreSQL Operators: kind/postgresql-operators.md
   - Diving deeper:
       - A bit of Docker history: diving-deeper/docker-history.md
   - CHANGELOG: changelog.md
