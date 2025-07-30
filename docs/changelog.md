@@ -1,4 +1,4 @@
-## 2025-07-28
+## 2025-07-30
 
 - Improve the [_Getting Started_](./getting-started.md) page to include information
   about more _Kubernetes_ distributions: `Minikube, MicroK8s, Kubeadm, Kind, K3s`,
