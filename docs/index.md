@@ -8,14 +8,13 @@ This repository contains my personal notes and studies on
 [**Kubernetes**](https://kubernetes.io/), including various configurations, deployments,
 and other related topics.
 
-These notes are primarily for **personal reference** and follow my learning flow,
-but they may also be helpful for sharing knowledge with others.
+These notes are for personal reference and follow my learning process, but they are
+also meant to share knowledge with others.
 
 /// admonition | Opinions are my own.
     type: warning
 
-The opinions expressed in these notes are my own and do **not** represent the views of
-my employer.
+The opinions expressed in these notes are **my own**.
 
 ///
 
