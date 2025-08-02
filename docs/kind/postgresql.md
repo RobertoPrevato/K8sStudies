@@ -222,7 +222,8 @@ docker run --rm \
 ```
 
 Then, navigate to [http://localhost:8080/](http://localhost:8080/) to access the local
-instance of *pgAdmin*.
+instance of *pgAdmin*. It takes several seconds for the `pgAdmin` server to
+become responsive.
 
 ![pgAdmin sign-in](/K8sStudies/img/pgadmin-signin.png)
 
@@ -440,6 +441,25 @@ Try connecting using `psql`:
 ```bash
 PGPASSWORD=mypassword psql -h $LB_IP -p 5432 -U myuser mydb
 ```
+
+The connection should work. To connect from a Docker container that is not part
+of the Kubernetes cluster, use the [`--network host`](https://docs.docker.com/engine/network/tutorials/host/)
+option, and specify to which port the `pgAdmin` server should listen to:
+
+```bash {hl_lines="2-3"}
+docker run --rm \
+  --network host \
+  -e 'PGADMIN_LISTEN_PORT=8081' \
+  --name pgadmin \
+  -e 'PGADMIN_DEFAULT_EMAIL=user@domain.com' \
+  -e 'PGADMIN_DEFAULT_PASSWORD=******' \
+  -d \
+  dpage/pgadmin4
+```
+
+The Kind LoadBalancer IP is only accessible from the host, not from sibling
+Docker containers, due to network isolation. That is why `--network host` is
+needed in this case.
 
 ## Next steps
 

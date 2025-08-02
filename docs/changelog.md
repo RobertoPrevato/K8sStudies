@@ -1,3 +1,10 @@
+## 2025-08-02
+
+- Improve the [_PostgreSQL_](./postgresql.md) page to describe how to connect
+  to a _PostgreSQL_ server running in Kind using a Load Balancer, from a Docker
+  container that is not part of the Kubernetes cluster (e.g. to use `psql` or
+  `pgAdmin` from a standalone Docker container).
+
 ## 2025-07-30
 
 - Improve the [_Getting Started_](./getting-started.md) page to include information
