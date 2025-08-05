@@ -7,8 +7,6 @@ are a way to extend Kubernetes capabilities to manage complex applications,
 like databases, by automating tasks such as deployment, scaling, and automatic
 failovers in case of node failure.
 
-
-
 ## Why so much interest in PostgreSQL?
 
 Started in 1986, PostgreSQL is a powerful, open-source object-relational
@@ -286,6 +284,52 @@ Recommended reading:
 
 TODO: continuare da qui: https://cloudnative-pg.io/documentation/current/architecture/
 
+### Share storage for local development
+
+For **local development**, I wanted to share and persist the storage of the
+PostgreSQL cluster on the host.
+
+Create a directory on the host:
+
+```bash
+mkdir -p /tmp/pg-shared-data
+```
+
+Create a Kind cluster using the `kind.yaml` configuration file
+in `./examples/06-cloudnativepg/`, which includes a mount to the host:
+
+```yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: /tmp/pg-shared-data
+        containerPath: /pg-shared-data
+```
+
+Create a cluster with the configuration file:
+
+```bash
+kind create cluster --config kind.yaml --name dev
+
+kubectl cluster-info --context kind-dev
+```
+
+Install the CloudNativePG operator, like earlier, and apply the third example
+cluster manifest:
+
+```bash
+kubectl apply --server-side -f \
+  https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.26/releases/cnpg-1.26.1.yaml
+
+kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
+
+# ./examples/06-cloudnativepg/
+kubectl apply -f cluster-example-03.yaml
+```
+
+This works well only for **local development**, of course.
 
 ### Storage agnostic
 
