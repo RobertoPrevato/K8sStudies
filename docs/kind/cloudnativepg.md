@@ -263,7 +263,7 @@ testdb=#
 
 ---
 
-### Reading time…
+## Reading time…
 
 The first impressions are great! So positive, that I decided to read the whole
 documentation before continuing with practicing.
@@ -284,7 +284,7 @@ Recommended reading:
 
 ---
 
-### Share storage for local development
+## Share storage for local development
 
 For **local development**, I wanted to share and persist the storage of the
 PostgreSQL cluster on the host. Since I am trying to create a CNPG cluster with
@@ -368,3 +368,52 @@ environments, it's not good to have a single point of failure in a single disk,
 and `hostPath` is not a good option.
 
 ///
+
+## Including a Load Balancer
+
+To include a Load Balancer, include a `Service` of type `LoadBalancer`
+in the cluster manifest, like in `./examples/06-cloudnativepg/cluster-example-04.yaml`:
+
+```yaml
+# …existing code…
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cluster-example-rw
+spec:
+  type: LoadBalancer
+  selector:
+    cnpg.io/cluster: cluster-example
+    cnpg.io/role: primary
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+```
+
+Run `cloud-provider-kind` in a different terminal.terminal:
+
+```bash
+cloud-provider-kind
+```
+
+Apply the changes:
+
+```bash
+# ./examples/06-cloudnativepg/
+kubectl apply -f cluster-example-04.yaml
+```
+
+Connect to the database using `psql`, like before, but this time using the
+Load Balancer IP address:
+
+```bash
+# Get the Load Balancer IP address
+LB_IP=$(kubectl get svc/cluster-example-rw -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+PGPASSWORD=$(kubectl get secret cluster-example-superuser -o jsonpath="{.data.password}" | base64 -d)
+
+PGPASSWORD=$PGPASSWORD psql -h $LB_IP -p 5432 -U postgres postgres
+```
+
+The connection should be successful, and you should see the `psql` prompt.
