@@ -23,7 +23,7 @@ nodes:
         protocol: TCP
   - role: worker
     extraMounts:
-      - hostPath: /home/ropt/stores
+      - hostPath: /tmp/stores
         containerPath: /home/stores
 ```
 
@@ -57,7 +57,7 @@ nodes:
     labels:
       apps-node: "true"
     extraMounts:
-      - hostPath: /home/ropt/stores
+      - hostPath: /tmp/stores
         containerPath: /home/stores
 ```
 

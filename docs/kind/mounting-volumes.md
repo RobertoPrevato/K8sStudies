@@ -37,15 +37,24 @@ The `SQLite` database expected by the application can be created using [*Alembic
 Since I am still practicing with *kind*, I realized I needed to configure my *kind*
 cluster to mount a folder from my host machine to the containers running in the cluster.
 
-I decided to create a folder in my home directory, named "stores", planning to create a
-subfolder for each application I want to run in the cluster. In this case, I created a
-`cookies` subfolder to store the SQLite database for the fortune cookies application:
+I decided to create a folder in my `tmp` directory, named "stores", planning to
+create a subfolder for each application I want to run in the cluster. In this
+case, I created a `cookies` subfolder to store the SQLite database for the
+fortune cookies application:
 
 ```
 .
-└── stores
-    └── cookies
-        └── app.db
+└── tmp
+    └── stores
+        └── cookies
+            └── app.db
+```
+
+Create a `/tmp/stores` folder on your host machine, including the `cookies`
+subfolder:
+
+```bash
+mkdir -p /tmp/stores/cookies
 ```
 
 I asked *GitHub Copilot*'s help to configure volume mounting in my *kind* cluster, and
@@ -66,17 +75,13 @@ nodes:
         hostPort: 443
         protocol: TCP
     extraMounts:
-      - hostPath: /home/ropt/stores
+      - hostPath: /tmp/stores
         containerPath: /home/stores
 ```
 
-This configuration mounts the host folder `/home/ropt/stores` to the `control-plane`'s
+This configuration mounts the host folder `/tmp/stores` to the `control-plane`'s
 node container at the path `/home/stores`. I made this planning to later mount specific
 subfolders into containers for specific `pods`.
-
-In my case, my Linux user is named `ropt` and I am using the path `/home/ropt/stores`
-for the source folder, but you should replace it with the path to the folder you created
-on your host machine.
 
 ## Recreating the cluster
 

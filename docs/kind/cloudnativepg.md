@@ -282,19 +282,33 @@ Recommended reading:
 
 - [_Recommended architectures for PostgreSQL in Kubernetes_](https://www.cncf.io/blog/2023/09/29/recommended-architectures-for-postgresql-in-kubernetes/).
 
-TODO: continuare da qui: https://cloudnative-pg.io/documentation/current/architecture/
+---
 
 ### Share storage for local development
 
 For **local development**, I wanted to share and persist the storage of the
-PostgreSQL cluster on the host.
-
-Since I am trying to create a CNPG cluster with three PostgreSQL instances, we need to
-create a folder for each of them on the host:
+PostgreSQL cluster on the host. Since I am trying to create a CNPG cluster with
+three PostgreSQL instances, we need to create a folder for each of them on the
+host:
 
 ```bash
 mkdir -p /tmp/pgdata/instance-{1,2,3}
+
+# make the directories writable
+chmod -R 777 /tmp/pgdata
 ```
+
+/// note | Folder permissions.
+
+PostgreSQL (and thus CloudNativePG) requires that the data directory is
+writable by the PostgreSQL user inside the container (usually UID 26 or 999,
+depending on the image). If the permissions are too restrictive, the pods will
+fail to start with a "permission denied" error.
+
+To ensure pgdata and its subdirectories are usable, set the permissions so that
+all users can read/write (for local development only).
+
+///
 
 Create a Kind cluster using the `kind.yaml` configuration file
 in `./examples/06-cloudnativepg/`, which includes a mount to the host:
@@ -336,13 +350,21 @@ Verify the status of the deployment:
 watch kubectl get pods
 ```
 
+After a few seconds, you should see three pods running, like:
+
+```bash
+NAME                READY   STATUS    RESTARTS   AGE
+cluster-example-1   1/1     Running   0          103s
+cluster-example-2   1/1     Running   0          83s
+cluster-example-3   1/1     Running   0          64s
+```
+
+You can try connecting to the database using `psql`, like before.
+
 /// danger | Only for development!
 
 This makes sense only for **local development**. In production or more important
-environments we don't want to have a single point of failure in a single volume.
+environments, it's not good to have a single point of failure in a single disk,
+and `hostPath` is not a good option.
 
 ///
-
-### Storage agnostic
-
-CloudNativePG is storage agnostic.
