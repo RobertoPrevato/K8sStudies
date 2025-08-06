@@ -287,9 +287,34 @@ Recommended reading:
 ## Share storage for local development
 
 For **local development**, I wanted to share and persist the storage of the
-PostgreSQL cluster on the host. Since I am trying to create a CNPG cluster with
-three PostgreSQL instances, we need to create a folder for each of them on the
-host:
+PostgreSQL cluster on the host. The diagram below illustrates the scenario,
+where each PostgreSQL instance in the cluster has its own `pgdata` folder
+mounted from the host machine, using `hostPath` volumes.
+
+```mermaid
+flowchart TD
+    subgraph Host Machine
+        direction LR
+        subgraph /tmp/pgdata
+            A1[/instance-1/]
+            A2[/instance-2/]
+            A3[/instance-3/]
+        end
+    end
+
+    subgraph "Kubernetes Cluster (Kind)"
+        direction LR
+        P1["**Pod: cluster-example-1**<br/>(PostgreSQL Instance 1)"]
+        P2["**Pod: cluster-example-2**<br/>(PostgreSQL Instance 2)"]
+        P3["**Pod: cluster-example-3**<br/>(PostgreSQL Instance 3)"]
+    end
+
+    P1 ---|hostPath mount| A1
+    P2 ---|hostPath mount| A2
+    P3 ---|hostPath mount| A3
+```
+
+Create the folders on the host:
 
 ```bash
 mkdir -p /tmp/pgdata/instance-{1,2,3}
@@ -298,7 +323,7 @@ mkdir -p /tmp/pgdata/instance-{1,2,3}
 chmod -R 777 /tmp/pgdata
 ```
 
-/// note | Folder permissions.
+/// details | Folder permissions.
 
 PostgreSQL (and thus CloudNativePG) requires that the data directory is
 writable by the PostgreSQL user inside the container (usually UID 26 or 999,
