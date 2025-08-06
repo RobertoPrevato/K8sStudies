@@ -417,3 +417,69 @@ PGPASSWORD=$PGPASSWORD psql -h $LB_IP -p 5432 -U postgres postgres
 ```
 
 The connection should be successful, and you should see the `psql` prompt.
+
+## Testing automatic failover
+
+To test the automatic failover performed by `CloudNativePG`, we can delete the
+primary pod and see if a new primary is elected automatically.
+
+To see which pod is the primary, detect the one with label `cnpg.io/instanceRole=primary`:
+
+```bash
+kubectl get pods --show-labels
+```
+
+In my case, the first pod is the primary:
+
+``` {hl_lines="2"}
+NAME                READY   STATUS    RESTARTS   AGE   LABELS
+cluster-example-1   1/1     Running   0          18m   cnpg.io/cluster=cluster-example,cnpg.io/instanceName=cluster-example-1,cnpg.io/instanceRole=primary,cnpg.io/podRole=instance,role=primary
+cluster-example-2   1/1     Running   0          18m   cnpg.io/cluster=cluster-example,cnpg.io/instanceName=cluster-example-2,cnpg.io/instanceRole=replica,cnpg.io/podRole=instance,role=replica
+cluster-example-3   1/1     Running   0          17m   cnpg.io/cluster=cluster-example,cnpg.io/instanceName=cluster-example-3,cnpg.io/instanceRole=replica,cnpg.io/podRole=instance,role=replica
+```
+
+You can also get the primary pod and replicas by label:
+
+```bash
+kubectl get pod -l cnpg.io/cluster=cluster-example,cnpg.io/instanceRole=primary
+
+kubectl get pod -l cnpg.io/cluster=cluster-example,cnpg.io/instanceRole=replica
+```
+
+To test automatic failover, delete the primary pod:
+
+```bash
+# delete the primary pod by label:
+kubectl delete pod -l cnpg.io/cluster=cluster-example,cnpg.io/instanceRole=primary
+```
+
+Hurray! :partying_face: A new primary was elected instantly, and a new secondary pod was created
+to replace the deleted primary pod. You can verify this by listing the pods again:
+
+```bash {hl_lines="1-2 7"}
+$ kubectl delete pod -l cnpg.io/cluster=cluster-example,cnpg.io/instanceRole=primary
+pod "cluster-example-1" deleted
+
+$ kubectl get pods --show-labels
+NAME                READY   STATUS    RESTARTS   AGE   LABELS
+cluster-example-1   1/1     Running   0          12s   cnpg.io/cluster=cluster-example,cnpg.io/instanceName=cluster-example-1,cnpg.io/instanceRole=replica,cnpg.io/podRole=instance,role=replica
+cluster-example-2   1/1     Running   0          19m   cnpg.io/cluster=cluster-example,cnpg.io/instanceName=cluster-example-2,cnpg.io/instanceRole=primary,cnpg.io/podRole=instance,role=primary
+cluster-example-3   1/1     Running   0          19m   cnpg.io/cluster=cluster-example,cnpg.io/instanceName=cluster-example-3,cnpg.io/instanceRole=replica,cnpg.io/podRole=instance,role=replica
+```
+
+**Wonderful!**
+
+## Summary
+
+In this exercise, I learned how to create a PostgreSQL cluster using
+[CloudNativePG](https://cloudnative-pg.io/), a Kubernetes Operator for managing
+PostgreSQL clusters in Kubernetes. I practiced creating a cluster, connecting
+to it using `psql`, and enabling the super user. I also learned how to share
+storage for local development using Kind, and how to include a Load Balancer
+to connect to the database from outside the cluster. Finally, I tested the
+automatic failover feature by deleting the primary pod and verifying that a new
+primary was elected automatically.
+
+## Next steps
+
+…
