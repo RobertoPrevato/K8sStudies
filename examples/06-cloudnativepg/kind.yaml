@@ -3,9 +3,5 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
     extraMounts:
-      - hostPath: /tmp/pg-shared-data
-        containerPath: /pg-shared-data
-  - role: worker
-    extraMounts:
-      - hostPath: /tmp/pg-shared-data
-        containerPath: /pg-shared-data
+      - hostPath: /tmp/pgdata
+        containerPath: /pgdata

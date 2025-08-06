@@ -289,10 +289,11 @@ TODO: continuare da qui: https://cloudnative-pg.io/documentation/current/archite
 For **local development**, I wanted to share and persist the storage of the
 PostgreSQL cluster on the host.
 
-Create a directory on the host:
+Since I am trying to create a CNPG cluster with three PostgreSQL instances, we need to
+create a folder for each of them on the host:
 
 ```bash
-mkdir -p /tmp/pg-shared-data
+mkdir -p /tmp/pgdata/instance-{1,2,3}
 ```
 
 Create a Kind cluster using the `kind.yaml` configuration file
@@ -304,16 +305,16 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
     extraMounts:
-      - hostPath: /tmp/pg-shared-data
-        containerPath: /pg-shared-data
+      - hostPath: /tmp/pgdata
+        containerPath: /pgdata
 ```
 
 Create a cluster with the configuration file:
 
 ```bash
-kind create cluster --config kind.yaml --name dev
+kind create cluster --config kind.yaml --name db
 
-kubectl cluster-info --context kind-dev
+kubectl cluster-info --context kind-db
 ```
 
 Install the CloudNativePG operator, like earlier, and apply the third example
@@ -329,7 +330,18 @@ kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
 kubectl apply -f cluster-example-03.yaml
 ```
 
-This works well only for **local development**, of course.
+Verify the status of the deployment:
+
+```bash
+watch kubectl get pods
+```
+
+/// danger | Only for development!
+
+This makes sense only for **local development**. In production or more important
+environments we don't want to have a single point of failure in a single volume.
+
+///
 
 ### Storage agnostic
 
