@@ -396,25 +396,37 @@ and `hostPath` is not a good option.
 
 ## Including a Load Balancer
 
-To include a Load Balancer, include a `Service` of type `LoadBalancer`
-in the cluster manifest, like in `./examples/06-cloudnativepg/cluster-example-04.yaml`:
+To include a Load Balancer, do like documented at [_Service Management > Adding Your Own Services_](https://cloudnative-pg.io/documentation/current/service_management/) to include a `LoadBalancer`. Beware that:
 
-```yaml
+- With `kind`, you need to run the `cloud-provider-kind` tool as described
+  previously, and keep it running.
+- CloudNativePG requires to not modify the default services it creates. The
+  documentation says: _you cannot use any of the default reserved service names
+  that follow the convention &lt;CLUSTER_NAME&gt;-&lt;SERVICE_NAME&gt;_.
+
+An example is provided at `./examples/06-cloudnativepg/cluster-example-04.yaml`:
+
+```yaml {linenums="0" hl_lines="12-20"}
 # …existing code…
----
-apiVersion: v1
-kind: Service
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
 metadata:
-  name: cluster-example-rw
+  name: cluster-example
 spec:
-  type: LoadBalancer
-  selector:
-    cnpg.io/cluster: cluster-example
-    cnpg.io/role: primary
-  ports:
-    - name: postgres
-      port: 5432
-      targetPort: 5432
+  instances: 3
+  enableSuperuserAccess: true
+  storage:
+    size: 1Gi
+    storageClass: cnpg-hostpath
+  managed:
+    services:
+      additional:
+        - selectorType: rw
+          serviceTemplate:
+            metadata:
+              name: "mydb-lb"
+            spec:
+              type: LoadBalancer
 ```
 
 Run `cloud-provider-kind` in a different terminal.terminal:
@@ -430,12 +442,18 @@ Apply the changes:
 kubectl apply -f cluster-example-04.yaml
 ```
 
+List services to see the new Load Balancer service created:
+
+```bash
+kubectl get svc
+```
+
 Connect to the database using `psql`, like before, but this time using the
 Load Balancer IP address:
 
 ```bash
 # Get the Load Balancer IP address
-LB_IP=$(kubectl get svc/cluster-example-rw -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+LB_IP=$(kubectl get svc/mydb-lb -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
 PGPASSWORD=$(kubectl get secret cluster-example-superuser -o jsonpath="{.data.password}" | base64 -d)
 
 PGPASSWORD=$PGPASSWORD psql -h $LB_IP -p 5432 -U postgres postgres

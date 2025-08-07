@@ -54,17 +54,12 @@ spec:
   storage:
     size: 1Gi
     storageClass: cnpg-hostpath
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: cluster-example-rw
-spec:
-  type: LoadBalancer
-  selector:
-    cnpg.io/cluster: cluster-example
-    cnpg.io/role: primary
-  ports:
-    - name: postgres
-      port: 5432
-      targetPort: 5432
+  managed:
+    services:
+      additional:
+        - selectorType: rw
+          serviceTemplate:
+            metadata:
+              name: "mydb-lb"
+            spec:
+              type: LoadBalancer
