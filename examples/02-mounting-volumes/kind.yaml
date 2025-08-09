@@ -10,5 +10,5 @@ nodes:
         hostPort: 443
         protocol: TCP
     extraMounts:
-      - hostPath: /tmp/stores
+      - hostPath: /home/stores
         containerPath: /home/stores

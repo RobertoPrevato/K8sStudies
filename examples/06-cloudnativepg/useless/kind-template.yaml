@@ -1,7 +1,8 @@
+# kind config template (TODO: replace $HOME with your home directory)
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
     extraMounts:
-      - hostPath: /tmp/pgdata
+      - hostPath: $HOME/pgdata
         containerPath: /pgdata

@@ -1,10 +1,10 @@
-## 2025-08-06
+## 2025-08-09
 
 - Add the [_CloudNativePG_](./kind/cloudnativepg.md) page to describe my
   first baby steps with _CloudNativePG_, including a brief introduction to
   _Operators_ and how they extend Kubernetes capabilities to manage complex
   applications like databases.
-- Improve the mounting volumes example to use the `/tmp/stores/`
+- Improve the mounting volumes example to use the `/home/stores/`
   folder on the host machine, instead of a user-specific home folder.
 
 ## 2025-08-02

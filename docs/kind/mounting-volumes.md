@@ -50,11 +50,13 @@ fortune cookies application:
             └── app.db
 ```
 
-Create a `/tmp/stores` folder on your host machine, including the `cookies`
-subfolder:
+Create a `/home/stores` folder on your host machine, including the `cookies`
+subfolder, and make it writable:
 
 ```bash
-mkdir -p /tmp/stores/cookies
+sudo mkdir -p /home/stores/cookies
+
+sudo chmod -R 777 /home/stores/
 ```
 
 I asked *GitHub Copilot*'s help to configure volume mounting in my *kind* cluster, and
@@ -75,11 +77,11 @@ nodes:
         hostPort: 443
         protocol: TCP
     extraMounts:
-      - hostPath: /tmp/stores
+      - hostPath: /home/stores
         containerPath: /home/stores
 ```
 
-This configuration mounts the host folder `/tmp/stores` to the `control-plane`'s
+This configuration mounts the host folder `/home/stores` to the `control-plane`'s
 node container at the path `/home/stores`. I made this planning to later mount specific
 subfolders into containers for specific `pods`.
 

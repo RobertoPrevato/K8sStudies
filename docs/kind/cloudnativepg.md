@@ -14,9 +14,8 @@ database system, and one of the most successful and popular open-source
 projects ever. [PostgreSQL ranked #1](https://survey.stackoverflow.co/2023/#section-most-popular-technologies-databases).
 in a 2023 Stack Overflow survey about the most popular technologies, in the
 databases category. It is known for its reliability, feature robustness,
-and performance, and it is widely used in production systems.
-
-I used PostgreSQL several times in the past, and I know it to be a great choice.
+and performance, and it is widely used in production systems. I used PostgreSQL
+several times in the past, and I know it is a great choice.
 
 ## CloudNativePG quickstart
 
@@ -36,29 +35,24 @@ failovers in case of node failure.
 
 ///
 
-
-Create a cluster with Kind, and configure `kubectl` to use it:
+Create a cluster with Kind, and follow the steps below to install the
+CloudNativePG Operator:
 
 ```bash
 kind create cluster --name pg
 
 kubectl cluster-info --context kind-pg
-```
 
-Install the [CloudNativePG operator](https://cloudnative-pg.io/documentation/current/installation_upgrade/):
-
-```bash
+# install the CNPG operator
 kubectl apply --server-side -f \
   https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.26/releases/cnpg-1.26.1.yaml
-```
 
-Check for the status:
-
-```bash
+# check for the status
 kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
 ```
 
-The output should say: _deployment "cnpg-controller-manager" successfully rolled out_.
+The output of the final command should say: _deployment
+"cnpg-controller-manager" successfully rolled out_.
 
 ### Create a CloudNativePG cluster
 
@@ -82,8 +76,8 @@ spec:
 kubectl apply -f cluster-example-01.yaml
 ```
 
-Now, if you list the services with `kubectl get svc`, you should see three
-services created:
+If you list the services with `kubectl get svc`, you should see three services
+created:
 
 ```bash {hl_lines="1 4-6"}
 $ kubectl get svc
@@ -98,16 +92,16 @@ kubernetes           ClusterIP   10.96.0.1       <none>        443/TCP    6m56s
 These services are documented in the [_Service Management_](https://cloudnative-pg.io/documentation/current/service_management/#service-management)
 section of the CloudNativePG documentation.
 
-- The `cluster-example-rw` points to the primary instance of the cluster
+- `cluster-example-rw` points to the primary instance of the cluster
   (read/write). This is necessary for replication.
-- The `cluster-example-ro` points to the replicas, where available (read-only).
-- The `cluster-example-r` points to any PostgreSQL instance in the cluster (read).
+- `cluster-example-ro` points to the replicas, where available (read-only).
+- `cluster-example-r` points to any PostgreSQL instance in the cluster (read).
 
 ---
 
 ### Connect to the CloudNativePG cluster
 
-The [CloudNativePG's _QuickStart_ documentation here](https://cloudnative-pg.io/documentation/current/quickstart/)
+The [CloudNativePG's **QuickStart** here](https://cloudnative-pg.io/documentation/current/quickstart/)
 becomes dispersive, as it forgets to describe how to connect to the database,
 and it jumps to the subject of how to _Monitor clusters with Prometheus and Grafana_.
 
@@ -265,10 +259,11 @@ testdb=#
 
 ## Reading time…
 
-The first impressions are great! So positive, that I decided to read the whole
+The first impressions are great! I decided to dive deeper into the
 documentation before continuing with practicing.
-I also watched the talk given by Chris Milsted and Gabriele Bartolini at
-KubeCon NA 2022 entitled ["Data On Kubernetes, Deploying And Running PostgreSQL And Patterns For Databases In a Kubernetes Cluster"](https://www.youtube.com/watch?v=99uSJXkKpeI&ab_channel=CNCF%5BCloudNativeComputingFoundation%5D).
+I watched the recording of the talk given by **Chris Milsted** and
+**Gabriele Bartolini** at **KubeCon NA 2022**, entitled
+["Data On Kubernetes, Deploying And Running PostgreSQL And Patterns For Databases In a Kubernetes Cluster"](https://www.youtube.com/watch?v=99uSJXkKpeI&ab_channel=CNCF%5BCloudNativeComputingFoundation%5D).
 
 The talk covers several important topics, including architectures like the one
 illustrated below, which shows a cross-cluster replication setup with
@@ -278,24 +273,29 @@ happening over the internet.
 
 ![Cross cluster replicas](/K8sStudies/img/cnpg-cross-k8s-cluster-replication.png)
 
-Recommended reading:
+I read the following article, which provides useful information and a great
+insight into running data workloads in Kubernetes:
 
 - [_Recommended architectures for PostgreSQL in Kubernetes_](https://www.cncf.io/blog/2023/09/29/recommended-architectures-for-postgresql-in-kubernetes/).
+
+And I learnt about the [_Data on Kubernetes (DoK) Community_](https://dok.community/),
+as I wasn't aware of it. The DoK community is a group of people interested
+in running data workloads in Kubernetes.
 
 ---
 
 ## Share storage for local development
 
-For **local development**, I wanted to share and persist the storage of the
-PostgreSQL cluster on the host. The diagram below illustrates the scenario,
-where each PostgreSQL instance in the cluster has its own `pgdata` folder
-mounted from the host machine, using `hostPath` volumes.
+For **local development**, I wanted to persist the storage of the
+PostgreSQL cluster on the host. The diagram below illustrates the scenario I
+wished to achieve, where each PostgreSQL instance in the cluster has its own
+`pgdata` folder mounted from the host machine.
 
 ```mermaid
 flowchart TD
     subgraph Host Machine
         direction LR
-        subgraph /tmp/pgdata
+        subgraph /home/pgdata/
             A1[/instance-1/]
             A2[/instance-2/]
             A3[/instance-3/]
@@ -304,9 +304,9 @@ flowchart TD
 
     subgraph "Kubernetes Cluster (Kind)"
         direction LR
-        P1["**Pod: cluster-example-1**<br/>(PostgreSQL Instance 1)"]
-        P2["**Pod: cluster-example-2**<br/>(PostgreSQL Instance 2)"]
-        P3["**Pod: cluster-example-3**<br/>(PostgreSQL Instance 3)"]
+        P1["**Pod: 1**<br/>(PostgreSQL Instance 1)"]
+        P2["**Pod: 2**<br/>(PostgreSQL Instance 2)"]
+        P3["**Pod: 3**<br/>(PostgreSQL Instance 3)"]
     end
 
     P1 ---|hostPath mount| A1
@@ -314,87 +314,153 @@ flowchart TD
     P3 ---|hostPath mount| A3
 ```
 
-Create the folders on the host:
+This would be useful for **local development**, as it would allow to persist
+development data between PostgreSQL instances and cluster reconstructions.
+I managed to use local folders using a custom _storageClass_, but it turned out
+to be useless because _CloudNativePG_ does not support this scenario. The
+authors of CloudNativePG believe that if a CNPG cluster is
+deleted, then also the PostgreSQL data should be deleted (and indeed, this is the
+default behavior of Kubernetes' _Persistent Volumes_. But even if data is not
+deleted using [`persistentVolumeReclaimPolicy: Retain`](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/),
+CNPG will ignore it anyway and create a new `pgdata`. In my opinion, this
+is a sad design choice, as it makes it difficult to recover from accidental
+deletions of the cluster, and it makes it harder to work with a realistic
+development environment. The discussion about this topic can be found here:
+[CNPG discussion #5253](https://github.com/cloudnative-pg/cloudnative-pg/discussions/5253). And
+a workaround is proposed in the [CNPG PR #8095](https://github.com/cloudnative-pg/cloudnative-pg/pull/8095) (development
+experience would be bad).
+
+/// details | My useless example with storageClass.
+    open: True
+    type: example
+
+For reference, here is what I tried to achieve the desired scenario,
+using a custom _storageClass_ to mount local folders from the host machine and
+`persistentVolumeReclaimPolicy: Retain`.
+This example is not recommended, as CloudNativePG won't reuse data anyway, and
+it failed after a host reboot.
+
+Create the directories on the host machine:
 
 ```bash
-mkdir -p /tmp/pgdata/instance-{1,2,3}
+mkdir -p ~/pgdata/instance-{1,2,3}
 
 # make the directories writable
-chmod -R 777 /tmp/pgdata
+chmod -R 777 ~/pgdata
 ```
 
-/// details | Folder permissions.
-
-PostgreSQL (and thus CloudNativePG) requires that the data directory is
-writable by the PostgreSQL user inside the container (usually UID 26 or 999,
-depending on the image). If the permissions are too restrictive, the pods will
-fail to start with a "permission denied" error.
-
-To ensure pgdata and its subdirectories are usable, set the permissions so that
-all users can read/write (for local development only).
-
-///
-
-Create a Kind cluster using the `kind.yaml` configuration file
-in `./examples/06-cloudnativepg/`, which includes a mount to the host:
+Prepare a Kind configuration file using the template below:
 
 ```yaml
+# kind config template (TODO: replace $HOME with your home directory)
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
     extraMounts:
-      - hostPath: /tmp/pgdata
+      - hostPath: $HOME/pgdata
         containerPath: /pgdata
 ```
 
-Create a cluster with the configuration file:
+Replace `$HOME` in the template above with your home directory, manually or
+using `envsubst`:
 
 ```bash
-kind create cluster --config kind.yaml --name db
-
-kubectl cluster-info --context kind-db
+envsubst < kind-template.yaml > kind.yaml
 ```
 
-Install the CloudNativePG operator, like earlier, and apply the third example
-cluster manifest:
+Prepare a manifest like below:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: cnpg-hostpath
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cnpg-hostpath-pv-1
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: cnpg-hostpath
+  hostPath:
+    path: /pgdata/instance-1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cnpg-hostpath-pv-2
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: cnpg-hostpath
+  hostPath:
+    path: /pgdata/instance-2
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cnpg-hostpath-pv-3
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: cnpg-hostpath
+  hostPath:
+    path: /pgdata/instance-3
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cluster-example
+spec:
+  instances: 3
+  enableSuperuserAccess: true
+  storage:
+    size: 1Gi
+    storageClass: cnpg-hostpath
+```
+
+Follow the instructions described in this page to create a Kind cluster and
+apply the manifest. The PostgreSQL instances will write data in the
+`~/pgdata/instance-{1,2,3}`, but if you recreate the cluster in the same way,
+CNPG will not reuse the data anyway, unless you fight with its design choice.
 
 ```bash
+# ./examples/06-cloudnativepg/useless/
+envsubst < kind-template.yaml > kind.yaml
+
+kind create cluster --config kind.yaml --name pg
+
+kubectl cluster-info --context kind-pg
+
+# Install the CloudNativePG operator, like earlier
 kubectl apply --server-side -f \
   https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.26/releases/cnpg-1.26.1.yaml
 
 kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
 
-# ./examples/06-cloudnativepg/
-kubectl apply -f cluster-example-03.yaml
-```
+kubectl apply -f cluster-example.yaml
 
-Verify the status of the deployment:
-
-```bash
+# watch the status of the deployment
 watch kubectl get pods
 ```
 
-After a few seconds, you should see three pods running, like:
-
-```bash
-NAME                READY   STATUS    RESTARTS   AGE
-cluster-example-1   1/1     Running   0          103s
-cluster-example-2   1/1     Running   0          83s
-cluster-example-3   1/1     Running   0          64s
-```
-
-You can try connecting to the database using `psql`, like before.
-
-/// danger | Only for development!
-
-This makes sense only for **local development**. In production or more important
-environments, it's not good to have a single point of failure in a single disk,
-and `hostPath` is not a good option.
-
 ///
 
-## Including a Load Balancer
+## Include a Load Balancer
 
 To include a Load Balancer, do like documented at [_Service Management > Adding Your Own Services_](https://cloudnative-pg.io/documentation/current/service_management/) to include a `LoadBalancer`. Beware that:
 
@@ -404,7 +470,7 @@ To include a Load Balancer, do like documented at [_Service Management > Adding 
   documentation says: _you cannot use any of the default reserved service names
   that follow the convention &lt;CLUSTER_NAME&gt;-&lt;SERVICE_NAME&gt;_.
 
-An example is provided at `./examples/06-cloudnativepg/cluster-example-04.yaml`:
+An example is provided at `./examples/06-cloudnativepg/cluster-example-03.yaml`:
 
 ```yaml {linenums="0" hl_lines="12-20"}
 # …existing code…
@@ -435,11 +501,23 @@ Run `cloud-provider-kind` in a different terminal.terminal:
 cloud-provider-kind
 ```
 
-Apply the changes:
+Apply changes:
 
 ```bash
 # ./examples/06-cloudnativepg/
-kubectl apply -f cluster-example-04.yaml
+kubectl apply -f cluster-example-03.yaml
+
+# watch the status of the deployment
+watch kubectl get pods
+```
+
+After a few seconds, you should see three pods running, like:
+
+```bash
+NAME                READY   STATUS    RESTARTS   AGE
+cluster-example-1   1/1     Running   0          103s
+cluster-example-2   1/1     Running   0          83s
+cluster-example-3   1/1     Running   0          64s
 ```
 
 List services to see the new Load Balancer service created:
@@ -448,8 +526,7 @@ List services to see the new Load Balancer service created:
 kubectl get svc
 ```
 
-Connect to the database using `psql`, like before, but this time using the
-Load Balancer IP address:
+Connect to the database using `psql` using the Load Balancer IP address:
 
 ```bash
 # Get the Load Balancer IP address
@@ -461,7 +538,33 @@ PGPASSWORD=$PGPASSWORD psql -h $LB_IP -p 5432 -U postgres postgres
 
 The connection should be successful, and you should see the `psql` prompt.
 
-## Testing automatic failover
+
+/// details | Full recipe.
+    type: example
+
+This is a full recipe, when starting from scratch:
+
+```bash
+# ./examples/06-cloudnativepg/
+kind create cluster --config kind.yaml --name pg
+
+kubectl cluster-info --context kind-pg
+
+# Install the CloudNativePG operator, like earlier
+kubectl apply --server-side -f \
+  https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.26/releases/cnpg-1.26.1.yaml
+
+kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
+
+kubectl apply -f cluster-example-03.yaml
+
+# watch the status of the deployment
+watch kubectl get pods
+```
+
+///
+
+## Test automatic failover
 
 To test the automatic failover performed by `CloudNativePG`, we can delete the
 primary pod and see if a new primary is elected automatically.
@@ -496,8 +599,9 @@ To test automatic failover, delete the primary pod:
 kubectl delete pod -l cnpg.io/cluster=cluster-example,cnpg.io/instanceRole=primary
 ```
 
-Hurray! :partying_face: A new primary was elected instantly, and a new secondary pod was created
-to replace the deleted primary pod. You can verify this by listing the pods again:
+Hurray! :partying_face: A new primary was elected instantly, and a new secondary
+pod was created to replace the deleted primary pod. You can verify this by
+listing the pods again:
 
 ```bash {hl_lines="1-2 7"}
 $ kubectl delete pod -l cnpg.io/cluster=cluster-example,cnpg.io/instanceRole=primary
@@ -525,4 +629,7 @@ primary was elected automatically.
 
 ## Next steps
 
-…
+In my next steps, I plan to:
+
+- Try [_Zalando's PostgreSQL Operator_](https://github.com/zalando/postgres-operator).
+- Start practicing with _Kubeadm_, to create a real cluster.

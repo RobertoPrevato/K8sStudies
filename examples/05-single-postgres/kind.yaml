@@ -6,5 +6,5 @@ nodes:
     labels:
       db-node: "true"
     extraMounts:
-      - hostPath: /tmp/stores
+      - hostPath: /home/stores
         containerPath: /home/stores

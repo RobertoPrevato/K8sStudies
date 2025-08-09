@@ -1,3 +1,4 @@
+# This example is useless for the reasons described in the post
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -14,6 +15,7 @@ spec:
     storage: 1Gi
   accessModes:
     - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
   storageClassName: cnpg-hostpath
   hostPath:
     path: /pgdata/instance-1
@@ -27,6 +29,7 @@ spec:
     storage: 1Gi
   accessModes:
     - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
   storageClassName: cnpg-hostpath
   hostPath:
     path: /pgdata/instance-2
@@ -40,6 +43,7 @@ spec:
     storage: 1Gi
   accessModes:
     - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
   storageClassName: cnpg-hostpath
   hostPath:
     path: /pgdata/instance-3
