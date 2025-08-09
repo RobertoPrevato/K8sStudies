@@ -47,7 +47,7 @@ jobs:
 
       - name: Build docs
         run: |
-          mkdocs build
+          GIT_CONTRIBS_ON="1" mkdocs build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
