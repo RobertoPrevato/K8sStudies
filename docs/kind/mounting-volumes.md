@@ -28,7 +28,7 @@ docker pull robertoprevato/fortunecookies
 /// note | Demo SQLite database.
 
 The `SQLite` database expected by the application can be created using [*Alembic*](https://alembic.sqlalchemy.org/en/latest/), using the script
-[`newdb.sh` included in the repository](https://github.com/RobertoPrevato/SQLiteWebDemo/blob/main/newdb.sh).
+[`newdb.sh` included in the repository](https://github.com/RobertoPrevato/SQLiteWebDemo/blob/main/newdb.sh). A copy of the database file is also included in `./examples/02-mounting-volumes/data/app.db`, so you can use it directly.
 
 ///
 
@@ -248,14 +248,13 @@ projects.
 
 ## Note about volumes
 
-The volume strategy recommended by GitHub Copilot, using `hostPath`, is only suitable
-for local development. For production, it is best using a [`PersistentVolume`](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) instead,
-which I will try using later in a [different exercise](./postgresql.md).
+Using `hostPath` is only suitable for **local development**. For production, it is best using a [`PersistentVolume`](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) instead.
+For a tutorial on how to use `PersistentVolume`, see [_Kubernetes - Configure a Pod to Use a PersistentVolume for Storage_](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/).
 
 Kubernetes supports many [kinds of volumes](https://kubernetes.io/docs/concepts/storage/volumes/)!
 
-A volume created with `hostPath` mounts a directory from the Kubernetes node's local
-filesystem into a pod.
+A volume created with `hostPath` mounts a directory from the Kubernetes node's
+local filesystem into a pod.
 
 **hostPath** volumes:
 
