@@ -28,7 +28,7 @@ docker pull robertoprevato/fortunecookies
 /// note | Demo SQLite database.
 
 The `SQLite` database expected by the application can be created using [*Alembic*](https://alembic.sqlalchemy.org/en/latest/), using the script
-[`newdb.sh` included in the repository](https://github.com/RobertoPrevato/SQLiteWebDemo/blob/main/newdb.sh).
+[`newdb.sh` included in the repository](https://github.com/RobertoPrevato/SQLiteWebDemo/blob/main/newdb.sh). A copy of the database file is also included in `./examples/02-mounting-volumes/data/app.db`, so you can use it directly.
 
 ///
 
@@ -37,15 +37,26 @@ The `SQLite` database expected by the application can be created using [*Alembic
 Since I am still practicing with *kind*, I realized I needed to configure my *kind*
 cluster to mount a folder from my host machine to the containers running in the cluster.
 
-I decided to create a folder in my home directory, named "stores", planning to create a
-subfolder for each application I want to run in the cluster. In this case, I created a
-`cookies` subfolder to store the SQLite database for the fortune cookies application:
+I decided to create a folder in my `tmp` directory, named "stores", planning to
+create a subfolder for each application I want to run in the cluster. In this
+case, I created a `cookies` subfolder to store the SQLite database for the
+fortune cookies application:
 
 ```
 .
-└── stores
-    └── cookies
-        └── app.db
+└── tmp
+    └── stores
+        └── cookies
+            └── app.db
+```
+
+Create a `/home/stores` folder on your host machine, including the `cookies`
+subfolder, and make it writable:
+
+```bash
+sudo mkdir -p /home/stores/cookies
+
+sudo chmod -R 777 /home/stores/
 ```
 
 I asked *GitHub Copilot*'s help to configure volume mounting in my *kind* cluster, and
@@ -66,17 +77,13 @@ nodes:
         hostPort: 443
         protocol: TCP
     extraMounts:
-      - hostPath: /home/ropt/stores
+      - hostPath: /home/stores
         containerPath: /home/stores
 ```
 
-This configuration mounts the host folder `/home/ropt/stores` to the `control-plane`'s
+This configuration mounts the host folder `/home/stores` to the `control-plane`'s
 node container at the path `/home/stores`. I made this planning to later mount specific
 subfolders into containers for specific `pods`.
-
-In my case, my Linux user is named `ropt` and I am using the path `/home/ropt/stores`
-for the source folder, but you should replace it with the path to the folder you created
-on your host machine.
 
 ## Recreating the cluster
 
@@ -241,14 +248,13 @@ projects.
 
 ## Note about volumes
 
-The volume strategy recommended by GitHub Copilot, using `hostPath`, is only suitable
-for local development. For production, it is best using a [`PersistentVolume`](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) instead,
-which I will try using later in a [different exercise](./postgresql.md).
+Using `hostPath` is only suitable for **local development**. For production, it is best using a [`PersistentVolume`](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) instead.
+For a tutorial on how to use `PersistentVolume`, see [_Kubernetes - Configure a Pod to Use a PersistentVolume for Storage_](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/).
 
 Kubernetes supports many [kinds of volumes](https://kubernetes.io/docs/concepts/storage/volumes/)!
 
-A volume created with `hostPath` mounts a directory from the Kubernetes node's local
-filesystem into a pod.
+A volume created with `hostPath` mounts a directory from the Kubernetes node's
+local filesystem into a pod.
 
 **hostPath** volumes:
 

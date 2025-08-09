@@ -463,4 +463,4 @@ needed in this case.
 
 ## Next steps
 
-In my next exercise, I will practice with [_PostgreSQL Operators_](./postgresql-operators.md).
+In my next exercise, I will practice with [_CloudNativePG_](./cloudnativepg.md).

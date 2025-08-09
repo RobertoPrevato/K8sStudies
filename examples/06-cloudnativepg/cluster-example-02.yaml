@@ -1,0 +1,11 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cluster-example
+spec:
+  instances: 3
+
+  enableSuperuserAccess: true  # enable super use postgres
+
+  storage:
+    size: 1Gi

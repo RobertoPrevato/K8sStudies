@@ -1,6 +1,15 @@
+## 2025-08-09
+
+- Add the [_CloudNativePG_](./kind/cloudnativepg.md) page to describe my
+  first baby steps with _CloudNativePG_, including a brief introduction to
+  _Operators_ and how they extend Kubernetes capabilities to manage complex
+  applications like databases.
+- Improve the mounting volumes example to use the `/home/stores/`
+  folder on the host machine, instead of a user-specific home folder.
+
 ## 2025-08-02
 
-- Improve the [_PostgreSQL_](./postgresql.md) page to describe how to connect
+- Improve the [_PostgreSQL_](./kind/postgresql.md) page to describe how to connect
   to a _PostgreSQL_ server running in Kind using a Load Balancer, from a Docker
   container that is not part of the Kubernetes cluster (e.g. to use `psql` or
   `pgAdmin` from a standalone Docker container).

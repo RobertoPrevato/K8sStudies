@@ -201,6 +201,13 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 This command will generate a private key (`neoteroi-xyz-tls.key`) and a self-signed
 certificate (`neoteroi-xyz-tls.crt`) valid for 365 days.
 
+You can also use the provided `gen.sh` scripts, making them executable with:
+
+```bash
+chmod +x gen.sh
+./gen.sh
+```
+
 Later we will create a Kubernetes secret to store the certificate and key, and configure
 the ingress to use the secret for TLS.
 

@@ -16,5 +16,5 @@ nodes:
     labels:
       apps-node: "true"
     extraMounts:
-      - hostPath: /home/ropt/stores
+      - hostPath: /home/stores
         containerPath: /home/stores

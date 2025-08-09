@@ -109,6 +109,28 @@ installed Docker.
 
 ![Docker hello-world on WSL2](img/docker-hello-world-wsl2.png)
 
+### Installing Kubectl
+
+Follow the instructions [here to install kubectl on Linux](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/).
+
+At the time of this writing, they are, for `x86-64`:
+
+```bash
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+# optional...
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256" && echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+
+# install
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+```
+
+Test:
+
+```bash
+kubectl version --client
+```
+
 ### Installing Kind
 
 To run Kubernetes locally for learning purposes, I recommend using
