@@ -44,7 +44,7 @@ fortune cookies application:
 
 ```
 .
-└── tmp
+└── home
     └── stores
         └── cookies
             └── app.db
