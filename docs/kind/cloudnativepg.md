@@ -104,7 +104,6 @@ section of the CloudNativePG documentation.
 The [CloudNativePG's **QuickStart** here](https://cloudnative-pg.io/documentation/current/quickstart/)
 becomes dispersive, as it forgets to describe how to connect to the database,
 and it jumps to the subject of how to _Monitor clusters with Prometheus and Grafana_.
-
 For information on how to connect to the database, you need to move to another page:
 [_Connecting from an application_](https://cloudnative-pg.io/documentation/1.26/applications/).
 
@@ -315,26 +314,47 @@ flowchart TD
 ```
 
 This would be useful for **local development**, as it would allow to persist
-development data between PostgreSQL instances and cluster reconstructions.
+development data across cluster reconstructions.
 I managed to use local folders using a custom _storageClass_, but it turned out
 to be useless because _CloudNativePG_ does not support this scenario. The
-authors of CloudNativePG believe that if a CNPG cluster is
-deleted, then also the PostgreSQL data should be deleted (and indeed, this is the
-default behavior of Kubernetes' _Persistent Volumes_. But even if data is not
-deleted using [`persistentVolumeReclaimPolicy: Retain`](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/),
-CNPG will ignore it anyway and create a new `pgdata`. In my opinion, this
-is a sad design choice, as it makes it difficult to recover from accidental
-deletions of the cluster, and it makes it harder to work with a realistic
-development environment. The discussion about this topic can be found here:
+authors of CloudNativePG hold the opinion that, if a CNPG cluster is
+deleted, then also the PostgreSQL data must be deleted. Even if data is
+preserved using the option [`persistentVolumeReclaimPolicy: Retain`](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/)
+for persistent volumes, CNPG will ignore existing data anyway and create a new `pgdata`.
+In my opinion, this is a sad design choice, as it makes it difficult to recover
+from accidental deletions of the cluster, and it makes it harder to work with a
+realistic development environment. The discussion about this topic can be found here:
 [CNPG discussion #5253](https://github.com/cloudnative-pg/cloudnative-pg/discussions/5253). And
 a workaround is proposed in the [CNPG PR #8095](https://github.com/cloudnative-pg/cloudnative-pg/pull/8095) (development
 experience would be bad).
+
+/// note | What Kubernetes does.
+
+Kubernetes by default deletes data when a `PersistentVolume` is deleted, but
+you can change this behavior by setting the [`persistentVolumeReclaimPolicy`](https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/) to
+`Retain`. This means that the data will be preserved even if the `PersistentVolume`
+is deleted, and you can reuse it later. On the other hand, Kubernetes by
+default does not delete data when using [_StatefulSets_](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/).
+
+Kubernetes' documentation in this regard says:
+
+> Deleting and/or scaling a StatefulSet down will not delete the volumes
+> associated with the StatefulSet. **This is done to ensure data safety**, which is
+> generally more valuable than an automatic purge of all related StatefulSet
+> resources.
+
+CloudNativePG by design does **not** rely on `StatefulSet` resources, and instead
+manages the underlying PVCs directly, for the reasons described at [_Custom Pod Controller_](https://cloudnative-pg.io/documentation/current/controller/).
+In this context, it is more understandable why the authors of CNPG decided to
+follow the default behavior of Persistent Volumes.
+
+///
 
 /// details | My useless example with storageClass.
     open: True
     type: example
 
-For reference, here is what I tried to achieve the desired scenario,
+For reference, below is what I tried to achieve the desired scenario,
 using a custom _storageClass_ to mount local folders from the host machine and
 `persistentVolumeReclaimPolicy: Retain`.
 This example is not recommended, as CloudNativePG won't reuse data anyway, and
