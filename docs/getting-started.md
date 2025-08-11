@@ -32,7 +32,7 @@ You can use the Docker CLI (command-line interface) for free also for commercial
 
 ---
 
-To learn Docker, I recommend having:
+To learn Docker, I recommend using:
 
 - A personal laptop or desktop with **Ubuntu 24.04** installed directly as main
   operating system.
