@@ -309,7 +309,7 @@ spec:
     version: "17"
 ```
 
-Only for **local development** purposes, I am allowing all IPs (`0.0.0.0/0`).
+For **local development** purposes, I am allowing all IPs (`0.0.0.0/0`).
 Apply the modified manifest:
 
 ```bash
@@ -317,7 +317,7 @@ Apply the modified manifest:
 kubectl apply -f minimal-postgres-manifest.yaml
 ```
 
-Now try to connect again:
+Now try to connect again, it should work:
 
 ```bash
 psql -h 172.18.0.5 -U $user -d foo
@@ -328,11 +328,36 @@ Type "help" for help.
 foo=#
 ```
 
-It works! :tada: :tada: :tada:
+Hurray! :tada:
 
 ## Share storage for local development
 
-…
+I wanted to try again what I wanted to do with [_CloudNativePG_](./cloudnativepg.md#share-storage-for-local-development),
+
+```mermaid
+flowchart TD
+    subgraph Host Machine
+        direction LR
+        subgraph /home/pgdata/
+            A1[/instance-1/]
+            A2[/instance-2/]
+            A3[/instance-3/]
+        end
+    end
+
+    subgraph "Kubernetes Cluster (Kind)"
+        direction LR
+        P1["**Pod: 1**<br/>(PostgreSQL Instance 1)"]
+        P2["**Pod: 2**<br/>(PostgreSQL Instance 2)"]
+        P3["**Pod: 3**<br/>(PostgreSQL Instance 3)"]
+    end
+
+    P1 ---|volume mount| A1
+    P2 ---|volume mount| A2
+    P3 ---|volume mount| A3
+```
+
+
 
 
 ## The documentation is not great
@@ -340,8 +365,7 @@ It works! :tada: :tada: :tada:
 The documentation is not great. :fontawesome-regular-thumbs-down: I needed to
 google and rely on GitHub issues to learn more about how configuration changes
 are applied and how to configure a useful load balancer. The documentation is
-not very detailed, and it is not clear how to configure the operator to expose
-the PostgreSQL cluster using a Load Balancer.
+not very detailed.
 
 ## Confusing configuration
 
