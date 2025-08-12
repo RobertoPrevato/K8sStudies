@@ -5,17 +5,17 @@ metadata:
 spec:
   teamId: "acid"
   allowedSourceRanges:
-  - 0.0.0.0/0  # allow all IPs to connect (this is only for local development!)
+    - 0.0.0.0/0 # allow all IPs to connect (this is only for local development!)
   volume:
     size: 1Gi
   numberOfInstances: 2
   users:
-    zalando:  # database owner
-    - superuser
-    - createdb
-    foo_user: []  # role for application foo
+    zalando: # database owner
+      - superuser
+      - createdb
+    foo_user: [] # role for application foo
   databases:
-    foo: zalando  # dbname: owner
+    foo: zalando # dbname: owner
   preparedDatabases:
     bar: {}
   postgresql:

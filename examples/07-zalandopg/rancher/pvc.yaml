@@ -1,0 +1,13 @@
+# Modified from: https://raw.githubusercontent.com/rancher/local-path-provisioner/master/examples/pvc/pvc.yaml
+# This is not needed for Zalando PO, it is to test Rancher's Local Path Provisioner.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: local-path-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path-retain # modified
+  resources:
+    requests:
+      storage: 128Mi

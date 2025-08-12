@@ -52,7 +52,7 @@ data:
   enable_password_rotation: "false"
   enable_patroni_failsafe_mode: "false"
   enable_owner_references: "false"
-  enable_persistent_volume_claim_deletion: "true"
+  enable_persistent_volume_claim_deletion: "false" # support recreating clusters preserving data
   enable_pgversion_env_var: "true"
   enable_pod_antiaffinity: "false"
   enable_pod_disruption_budget: "true"
@@ -61,7 +61,7 @@ data:
   enable_readiness_probe: "false"
   enable_replica_load_balancer: "true"
   enable_replica_pooler_load_balancer: "false"
-  enable_secrets_deletion: "true"
+  enable_secrets_deletion: "false" # support recreating clusters preserving secrets
   enable_shm_volume: "true"
   enable_sidecars: "true"
   enable_spilo_wal_path_compat: "true"
@@ -171,5 +171,5 @@ data:
   # wal_az_storage_account: ""
   # wal_gs_bucket: ""
   # wal_s3_bucket: ""
-  watched_namespace: "*"  # listen to all namespaces
+  watched_namespace: "*" # listen to all namespaces
   workers: "8"

@@ -1,0 +1,20 @@
+# From: https://raw.githubusercontent.com/rancher/local-path-provisioner/master/examples/pod/pod.yaml
+# This is not needed for Zalando PO, it is to test Rancher's Local Path Provisioner.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-test
+spec:
+  containers:
+    - name: volume-test
+      image: nginx:stable-alpine
+      imagePullPolicy: IfNotPresent
+      volumeMounts:
+        - name: volv
+          mountPath: /data
+      ports:
+        - containerPort: 80
+  volumes:
+    - name: volv
+      persistentVolumeClaim:
+        claimName: data-pvc-1

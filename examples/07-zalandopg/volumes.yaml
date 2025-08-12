@@ -1,0 +1,51 @@
+# Storage class to persist pgdata on the host across restarts
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: my-hostpath
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-hostpath-pv-1
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: my-hostpath
+  local:
+    path: /var/stores/pgdata-1
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - db-control-plane
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-hostpath-pv-2
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: my-hostpath
+  local:
+    path: /var/stores/pgdata-2
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - db-control-plane

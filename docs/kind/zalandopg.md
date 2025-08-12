@@ -281,7 +281,7 @@ fails. I couldn't find the information in the documentation, but I
 found the answer looking at GitHub issues. The best instruction was here:
 [_issue #2365_](https://github.com/zalando/postgres-operator/issues/2365).
 
-Modify the `minimal-postgres-manifest.yaml` file to include the desired allowed
+Modify the `minimal-postgres-manifest-01.yaml` file to include the desired allowed
 [CIDR ranges](https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing):
 
 ```yaml {linenums=1 hl_lines="7-8"}
@@ -314,13 +314,13 @@ Apply the modified manifest:
 
 ```bash
 # examples/07-zalandopg
-kubectl apply -f minimal-postgres-manifest.yaml
+kubectl apply -f minimal-postgres-manifest-01.yaml
 ```
 
 Now try to connect again, it should work:
 
 ```bash
-psql -h 172.18.0.5 -U $user -d foo
+psql -h $LB_IP -U $user -d foo
 psql (17.5 (Ubuntu 17.5-1.pgdg24.04+1), server 17.2 (Ubuntu 17.2-1.pgdg22.04+1))
 SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, compression: off, ALPN: postgresql)
 Type "help" for help.
@@ -357,8 +357,322 @@ flowchart TD
     P3 ---|volume mount| A3
 ```
 
+I looked for information, and apparently Zalando PO supports the scenario I desire for
+local development:
 
+- possibility to use a local folder for each local PostgreSQL Server instance.
+- possibility to reuse the same folders across cluster recreation (the possibility of
+  deleting and recreating a cluster with the same name and namespace, picking up
+  `pgdata` from previous runs).
 
+### Local Path Provisioner
+
+Kubernetes in Docker (Kind) by default includes [_Rancher's Local Path Provisioner_](https://github.com/rancher/local-path-provisioner),
+which allows you to use local directories as persistent storage for your Kubernetes pods,
+dynamically provisioned. A local PV provisioner (like local-path-provisioner)
+automatically creates a unique directory on the host for each PersistentVolumeClaim (PVC),
+ensuring each PostgreSQL pod gets its own isolated storage.
+
+Rancher's Local Path Provisioner by default uses the root path:
+`/var/local-path-provisioner` on the host, to create folders dedicated to each pod and
+persistent volume, following the naming convention: `/var/local-path-provisioner/pvc-<pvc-uid>`.
+
+You can see the available storage classes with the command `kubectl get storageclass`:
+
+```bash
+$ kubectl get storageclass
+NAME                 PROVISIONER                    RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+cnpg-hostpath        kubernetes.io/no-provisioner   Delete          WaitForFirstConsumer   false                  3d15h
+standard (default)   rancher.io/local-path          Delete          WaitForFirstConsumer  false                  3d15h
+```
+
+Note that the `ReclaimPolicy` is set to _Delete_ by default, therefore when a
+PersistentVolumeClaim (PVC) is deleted, the associated storage volume is also deleted.
+We can create a new StorageClass with `ReclaimPolicy` set to _Retain_:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-path-retain
+provisioner: rancher.io/local-path
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+```
+
+```bash
+# ./examples/07-zalandopg/rancher/
+kubectl apply -f retain-local-storageclass.yaml
+```
+
+Verify that the storage class is created:
+
+```bash
+$ kubectl get storageclass local-path-retain
+NAME                PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+local-path-retain   rancher.io/local-path   Retain          WaitForFirstConsumer   false                  70s
+```
+
+This ensures that when the PVC is deleted, the underlying PV (and its data directory) is
+not deleted.
+
+### Test the retain
+
+To find which folder is used by Rancher's Local Path Provisioner, run the command:
+
+```bash
+kubectl -n local-path-storage get configmap local-path-config -o yaml | grep path
+```
+
+In my case, that is `/var/local-path-provisioner/`
+
+```bash {hl_lines="1"}
+$ kubectl -n local-path-storage get configmap local-path-config -o yaml | grep path
+                    "paths":["/var/local-path-provisioner"]
+```
+
+```bash
+# ./examples/07-zalandopg/rancher/
+sudo mkdir /var/local-path-provisioner/
+sudo chmod -R 777 /var/local-path-provisioner/
+
+kind create cluster --config kind.yaml --name localstorage
+
+kubectl cluster-info --context kind-localstorage
+
+kubectl apply -f retain-local-storageclass.yaml
+
+kubectl apply -f pvc.yaml
+
+kubectl apply -f pod.yaml
+
+# write something into the pod
+kubectl exec volume-test -- sh -c "echo 'Hello World' > /data/test.txt"
+```
+
+Since the `local-path-provisioner` is using the `/var/local-path-provisioner/`
+directory and this folder was mounted from the host, you should see a new folder created
+for your PVC under this path.
+
+```bash
+$ cd /var/local-path-provisioner
+$ tree
+.
+└── pvc-741d51ce-b9c0-4bf0-9700-574a407e2e07_default_local-path-pvc
+    └── test.txt
+
+$ cat pvc*/test.txt
+Hello World
+```
+
+/// details | Entering Kind nodes.
+    type: example
+
+I had some issues detecting the path used by Rancher, and I had to enter the nodes
+created by Kind. To do that, I did the following, starting from the `host`:
+
+```bash
+docker exec -it localstorage-control-plane /bin/bash
+
+# see running containers inside the Docker container
+crictl ps
+
+# enter a container by ID (by name it does not work)
+crictl exec -it <container-id> sh
+
+crictl exec -it 39e042ab62599 cat /data/test.txt
+Hello World
+```
+
+In alternative, you can also use `kubectl` from the host:
+
+```bash
+kubectl exec -it <pod-name> -- <command>
+```
+
+**Examples:**
+
+To open a shell in a pod named `volume-test`:
+
+```bash
+kubectl exec -it volume-test -- sh
+```
+
+To read a file named `test.txt` in the `/data` directory of the `volume-test` pod:
+
+```bash
+kubectl exec -it volume-test -- cat /data/test.txt
+```
+
+///
+
+Now, to verify that folders are retained:
+
+- Delete the pod.
+- Recreate the pod.
+- Verify that the data is still present.
+
+```bash
+kubectl delete pod volume-test
+
+kubectl apply -f pod.yaml
+
+kubectl exec -it volume-test -- cat /data/test.txt
+```
+
+The new POD reuses the same persistent volume (PV). :material-check:
+
+Try deleting the whole cluster:
+
+```bash
+kind delete cluster --name localstorage
+```
+
+Verify that the folder on the host was not deleted:
+
+```bash
+$ cat /var/local-path-provisioner/pvc*/test.txt
+Hello World
+```
+
+Recreate everything re-running the previous commands:
+
+```bash
+kind create cluster --config kind.yaml --name localstorage
+
+kubectl cluster-info --context kind-localstorage
+
+kubectl apply -f retain-local-storageclass.yaml
+
+kubectl apply -f pvc.yaml
+
+kubectl apply -f pod.yaml
+```
+
+Verify that the pod goes in `Running` state.
+
+```bash
+kubectl get pods
+```
+
+Check if the pod is using the previous folder:
+
+```bash {hl_lines="2"}
+kubectl exec -it volume-test -- cat /data/test.txt
+cat: can't open '/data/test.txt': No such file or directory
+```
+
+**No**, it doesn't. You can verify that the host contains new PVC folders:
+
+```bash
+cd /var/local-path-provisioner
+dir
+pvc-741d51ce-b9c0-4bf0-9700-574a407e2e07_default_local-path-pvc  pvc-9f3d6269-9853-422e-99bf-f26bd3a27198_default_local-path-pvc
+```
+
+To reuse the same folder, it is necessary to provision the `Persistent Volume (PV)`
+manually.
+
+Clean up:
+
+```bash
+kind delete cluster --name localstorage
+```
+
+### Manual provisioning
+
+To reuse the same folder, it is necessary to provision the `Persistent Volume (PV)`
+manually. Note that `folder.yaml` includes a node affinity selector that matches the
+Kind control plane created for the cluster with the name used below.
+
+```bash
+# ./examples/07-zalandopg/manual/
+sudo mkdir /var/stores/1/
+sudo chmod -R 777 /var/stores/
+
+kind create cluster --config kind.yaml --name localstorage
+
+kubectl cluster-info --context kind-localstorage
+
+kubectl apply -f folder.yaml
+
+kubectl apply -f pod.yaml
+
+# write something into the pod
+kubectl exec volume-test -- sh -c "echo 'Hello World' > /data/test.txt"
+
+# verify that the data is written to the host
+cat /var/stores/1/test.txt
+```
+
+Cool! Now, try deleting and recreating the cluster:
+
+```bash
+kind delete cluster --name localstorage
+
+kind create cluster --config kind.yaml --name localstorage
+
+kubectl cluster-info --context kind-localstorage
+
+kubectl apply -f folder.yaml
+
+kubectl apply -f pod.yaml
+```
+
+Verify that the pod is using the same data:
+
+```bash
+$ kubectl exec -it volume-test -- cat /data/test.txt
+Hello World
+```
+
+### Attempt with Zalando PO
+
+```bash
+# examples/07-zalandopg
+mkdir /var/stores/pgdata-{1,2}
+
+kind delete cluster --name db
+
+kind create cluster --config kind.yaml --name db
+
+kubectl cluster-info --context kind-db
+
+kubectl apply -k github.com/zalando/postgres-operator/manifests
+
+kubectl apply -f configmap.yaml
+
+kubectl delete pod -l name=postgres-operator
+
+# verify the operator is running
+watch kubectl get pod -l name=postgres-operator
+
+kubectl apply -f volumes.yaml
+
+kubectl apply -f minimal-postgres-manifest-02.yaml
+```
+
+Connect to the database server:
+
+```bash
+LB_IP=$(kubectl get svc acid-minimal-cluster -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+export PGPASSWORD=$(kubectl get secret zalando.acid-minimal-cluster.credentials.postgresql.acid.zalan.do -o 'jsonpath={.data.password}' | base64 -d)
+
+psql -h $LB_IP -U zalando -d foo
+```
+
+Create a table and insert some data, like we did previously.
+
+```bash
+# delete the cluster
+kubectl delete postgresql acid-minimal-cluster
+
+# recreate the cluster
+kubectl apply -f minimal-postgres-manifest-02.yaml
+```
+
+**IT DOESN`T WORK!**. OK, better not trying this.
 
 ## The documentation is not great
 
@@ -383,3 +697,22 @@ And these two:
 
 - [Operator ignores OperatorConfiguration changes #1315](https://github.com/zalando/postgres-operator/issues/1315).
 - [Question: Can load balancers only be accessed from outside via node port?](https://github.com/zalando/postgres-operator/issues/2365).
+
+> **Troubleshooting: Reusing pgdata folders after cluster recreation**
+>
+> If you delete and recreate the cluster but reuse the same `pgdata` folders, you may encounter authentication errors like:
+>
+> ```
+> psycopg2.OperationalError: connection to server at ... failed: FATAL:  password authentication failed for user "postgres"
+> ```
+> or
+> ```
+> FATAL:  pg_hba.conf rejects connection for host ..., user "postgres", database ...
+> ```
+>
+> This happens because the PostgreSQL data directory still contains the old user credentials and configuration, but the Kubernetes secrets (such as passwords) are regenerated and do not match the existing database. To avoid this:
+>
+> - **Option 1:** Restore the original secrets (especially the credentials secret) that were used with the data directory.
+> - **Option 2:** Delete the old data directories before recreating the cluster, so that new secrets and a fresh database are created in sync.
+>
+> If you want to persist data across cluster recreation, you must persist both the data directories and the corresponding secrets.
