@@ -17,6 +17,8 @@ nav:
       - Multi Nodes: kind/multi-nodes.md
       - PostgreSQL: kind/postgresql.md
       - CloudNativePG: kind/cloudnativepg.md
+  - K3s:
+      - Introduction: k3s/index.md
   - Diving deeper:
       - A bit of Docker history: diving-deeper/docker-history.md
   - CHANGELOG: changelog.md

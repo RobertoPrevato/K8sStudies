@@ -15,7 +15,7 @@ spec:
     - host: neoteroi.xyz
       http:
         paths:
-          - path: /cookies/
+          - path: /cookies
             pathType: Prefix
             backend:
               service:
@@ -25,7 +25,7 @@ spec:
     - host: www.neoteroi.xyz
       http:
         paths:
-          - path: /cookies/
+          - path: /cookies
             pathType: Prefix
             backend:
               service:

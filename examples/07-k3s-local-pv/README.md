@@ -14,7 +14,3 @@ kubectl create secret tls neoteroi-xyz-tls \
 cd ../
 kubectl apply -n common-ingress -f common-ingress.yaml
 ```
-
-It works!
-
-![alt text](./fortune-cookies-app.png)
