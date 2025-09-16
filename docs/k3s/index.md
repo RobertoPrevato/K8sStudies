@@ -13,13 +13,6 @@ across system reboots.
 
 The name "K3s" is a play on "K8s" (the common abbreviation for Kubernetes - with 8 letters between K and s). The "3" in K3s represents that it removes 5 from the 8 in K8s, signifying its lightweight nature.
 
-K3s is designed to be lightweight but robust, and it installs
-itself as a **systemd service**, which means:
-
-- It **automatically starts on boot**.
-- It **restores the Kubernetes control plane** and workloads after a reboot.
-- It **persists cluster state** in `/var/lib/rancher/k3s`.
-
 By default, K3s includes:
 
 - An ingress controller: [**Traefik**](https://traefik.io/traefik).
@@ -49,19 +42,9 @@ As I dive deeper into Kubernetes, K3s offers several advantages:
 - **Easy cluster formation**: Simple to create multi-node clusters with a join token
 - **Optimized for ARM**: Works well on Raspberry Pi and other ARM devices
 
-## How K3s Differs from Standard Kubernetes
-
-K3s achieves its lightweight status by:
-
-1. Removing legacy and alpha features
-2. Removing in-tree cloud providers and storage drivers
-3. Using containerd instead of Docker by default
-4. Using SQLite as the default storage backend instead of etcd
-5. Bundling essential components that are typically installed separately
-
 ## Basic Installation
 
-Installing K3s is simple:
+To install K3s with default settings:
 
 ```bash
 # Install server
@@ -117,7 +100,123 @@ Replacing `server-ip` and `token-from-server` with the actual values.
 - **CI/CD environments**: Fast startup makes it ideal for testing pipelines
 - **Small production deployments**: Suitable for smaller workloads and teams
 
-## My K3s Learning Journey
+## My first exercise
+
+For my first exercise, I wanted to try adapting the example about [volume mounting](../kind//mounting-volumes.md) to use K3s and persistent volumes, with Traefik instead of NGINX.
+
+My first attempt failed, and while investigating I found the following error:
+
+```bash
+kubectl logs -n kube-system -l app.kubernetes.io/name=traefik
+
+2025-09-16T06:26:53Z ERR Cannot create service error="externalName services not allowed: common-ingress/fortune-cookies" ingress=common-ingress namespace=common-ingress providerName=kubernetes serviceName=fortune-cookies servicePort=&ServiceBackendPort{Name:,Number:80,}
+```
+
+While using `ExternalName` services worked out of the box with Kind and NGINX, they are
+not allowed in the default K3s installation because Traefik does not allow them by default
+ (see [_allowExternalNameServices_](https://doc.traefik.io/traefik/reference/install-configuration/providers/kubernetes/kubernetes-crd/#providers-kubernetesCRD-allowExternalNameServices)).
+The purpose of `ExternalName` here was to keep the common ingress controller
+into a dedicated workspace, making it capable of exposing many workloads, each
+residing in a dedicated namespace.
+
+To enable `ExternalNameServices`, apply the following settings:
+
+```yaml
+# traefik-config.yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    providers:
+      kubernetesIngress:
+        allowExternalNameServices: true
+```
+
+```bash
+kubectl apply -f traefik-config.yaml
+```
+
+And try recreating the `common-ingress` like before. Now Traefik is failing in
+a different way:
+
+```bash
+kubectl logs -n kube-system -l app.kubernetes.io/name=traefik
+
+2025-09-16T07:47:03Z INF Starting provider *acme.ChallengeTLSALPN
+2025-09-16T07:47:03Z INF label selector is: "" providerName=kubernetescrd
+2025-09-16T07:47:03Z INF Creating in-cluster Provider client providerName=kubernetescrd
+2025-09-16T07:47:03Z INF ExternalName service loading is enabled, please ensure that this is expected (see AllowExternalNameServices option) providerName=kubernetes
+2025-09-16T07:47:42Z INF Updated ingress status ingress=common-ingress namespace=common-ingress
+2025-09-16T07:47:42Z ERR Cannot create service error="service not found" ingress=common-ingress namespace=common-ingress providerName=kubernetes serviceName=fortune-cookies servicePort=&ServiceBackendPort{Name:,Number:80,}
+2025-09-16T07:47:42Z ERR Error while updating ingress status error="failed to update ingress status common-ingress/common-ingress: Operation cannot be fulfilled on ingresses.networking.k8s.io \"common-ingress\": the object has been modified; please apply your changes to the latest version and try again" ingress=common-ingress namespace=common-ingress providerName=kubernetes
+2025-09-16T07:47:42Z ERR Cannot create service error="service not found" ingress=common-ingress namespace=common-ingress providerName=kubernetes serviceName=fortune-cookies servicePort=&ServiceBackendPort{Name:,Number:80,}
+2025-09-16T07:47:42Z ERR Cannot create service error="service not found" ingress=common-ingress namespace=common-ingress providerName=kubernetes serviceName=fortune-cookies servicePort=&ServiceBackendPort{Name:,Number:80,}
+2025-09-16T07:47:42Z ERR Cannot create service error="service not found" ingress=common-ingress namespace=common-ingress providerName=kubernetes serviceName=fortune-cookies servicePort=&ServiceBackendPort{Name:,Number:80,}
+```
+
+It claims the service is not found. However, it exists:
+
+```bash
+kubectl get svc -n common-ingress
+
+NAME              TYPE           CLUSTER-IP   EXTERNAL-IP                                        PORT(S)   AGE
+fortune-cookies   ExternalName   <none>       fortune-cookies.fortunecookies.svc.cluster.local   80/TCP    2m37s
+```
+
+And to verify that DNS resolution works inside the cluster:
+
+```bash
+kubectl run -n common-ingress dns-test --rm -it --image=busybox --restart=Never -- sh
+
+# Inside the pod:
+nslookup fortune-cookies.fortunecookies.svc.cluster.local
+
+/ # nslookup fortune-cookies.fortunecookies.svc.cluster.local
+Server:		10.43.0.10
+Address:	10.43.0.10:53
+
+
+Name:	fortune-cookies.fortunecookies.svc.cluster.local
+Address: 10.43.10.44
+```
+
+From the pod, it is even possible to get proper responses from the app running
+in the `fortunecookies` namespace.
+
+```bash
+kubectl run -n common-ingress curltest --rm -it --image=curlimages/curl --restart=Never -- sh
+
+curl http://fortune-cookies.fortunecookies.svc.cluster.local/cookies/
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <!-- Force latest IE rendering engine or ChromeFrame if installed -->
+    <!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"><![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Fortune Cookies</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="description" content="Project template to create web applications with MVC architecture using BlackSheep web framework." />
+    <link rel="icon" type="image/svg+xml" sizes="any"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥠</text></svg>" /><link rel="stylesheet" href="/cookies/styles/public.css" /></head>
+
+<body id="page-top">
+    <nav id="main-nav">
+        <h1>Fortune Cookies</h1>
+    </nav>
+
+    <div id="content"><div>
+    <p class="cookie"><i>🥠&nbsp;</i>Success is a journey, not a destination.</p>
+</div></div><!--
+Example
+-->
+</body>
+```
 
 I plan to explore K3s by setting up a local cluster on my machine, deploying applications, and experimenting with various Kubernetes features.
 

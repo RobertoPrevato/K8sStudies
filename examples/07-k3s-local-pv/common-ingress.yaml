@@ -5,7 +5,6 @@ metadata:
   name: common-ingress
   namespace: common-ingress
 spec:
-  ingressClassName: nginx
   tls:
     - hosts:
         - neoteroi.xyz
