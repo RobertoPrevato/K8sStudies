@@ -102,15 +102,46 @@ Replacing `server-ip` and `token-from-server` with the actual values.
 
 ## My first exercise
 
-For my first exercise, I wanted to try adapting the example about [volume mounting](../kind//mounting-volumes.md) to use K3s and persistent volumes, with Traefik instead of NGINX.
+For my first exercise, I wanted to try adapting the example about [volume mounting](../kind/mounting-volumes.md) to use K3s and persistent volumes, with Traefik instead of NGINX.
 
-My first attempt failed, and while investigating I found the following error:
+The README in `./examples/07-k3s-local-pv` includes commands to create the
+deployments.
+
+---
+
+There is an issue that, since my demo Fortune Cookies app expects a SQLite
+database populated with a `cookie` table and doesn't create one when using a
+volume mount, I needed to fix it manually after applying the `cookies.yaml`
+deployment.
 
 ```bash
+sudo su
+
+# cd in the default folder used by K3s for persistent volumes
+cd /var/lib/rancher/k3s/storage
+
+cd pvc-*_fortunecookies*
+
+# copy a populated app.db (like the one in the examples folder) into here
+cp /path_to_your_repo/examples/07-k3s-local-pv/data/app.db .
+```
+
+---
+
+At this point, I hoped the service would work like it did when I made the same
+with Kind and NGINX, but it didn't work. While investigating, I found the
+following error:
+
+```bash {hl_lines="3"}
 kubectl logs -n kube-system -l app.kubernetes.io/name=traefik
 
 2025-09-16T06:26:53Z ERR Cannot create service error="externalName services not allowed: common-ingress/fortune-cookies" ingress=common-ingress namespace=common-ingress providerName=kubernetes serviceName=fortune-cookies servicePort=&ServiceBackendPort{Name:,Number:80,}
 ```
+
+> *2025-09-16T06:26:53Z ERR Cannot create service error="externalName services
+> not allowed: common-ingress/fortune-cookies" ingress=common-ingress
+> namespace=common-ingress providerName=kubernetes serviceName=fortune-cookies
+> servicePort=&ServiceBackendPort{Name:,Number:80,}*
 
 While using `ExternalName` services worked out of the box with Kind and NGINX, they are
 not allowed in the default K3s installation because Traefik does not allow them by default
@@ -218,6 +249,10 @@ Example
 </body>
 ```
 
-I plan to explore K3s by setting up a local cluster on my machine, deploying applications, and experimenting with various Kubernetes features.
+Then, with the assistance of `Claude Sonnet 3.7`, I simply restarted Traefik:
 
-The subsequent pages in this section will document my experiences with K3s, including deployments, configurations, and lessons learned.
+```bash
+kubectl -n kube-system rollout restart deployment traefik
+```
+
+And it started working! :tada: :tada: :tada:

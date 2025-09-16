@@ -5,6 +5,7 @@ metadata:
   name: common-ingress
   namespace: common-ingress
 spec:
+  ingressClassName: traefik
   tls:
     - hosts:
         - neoteroi.xyz
