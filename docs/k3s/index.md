@@ -3,13 +3,15 @@ title: K3s - Lightweight Kubernetes
 ---
 
 After practicing with Kind for a while, I wanted to explore another lightweight
-Kubernetes distribution that's gaining popularity: **K3s**. **K3s** seems to be a better
-fit for shared and persistent development environments, as it's designed also for
-**production** workloads and it works well across system reboots.
+Kubernetes distribution that's gaining popularity: **K3s**.
 
 ## What is K3s?
 
 [K3s](https://k3s.io/) is a certified Kubernetes distribution designed to be lightweight and easy to install. Developed by [Rancher Labs](https://rancher.com/) (now part of SUSE), K3s packages Kubernetes as a single binary of less than 100MB that requires minimal resources to run.
+
+**K3s** seems to be a better fit than **Kind** for shared and persistent development
+environments, as it's designed also for **production** workloads and it works well
+across system reboots.
 
 ## Why K3s for Kubernetes Learning?
 
@@ -253,4 +255,5 @@ curl -k https://www.neoteroi.xyz/cookies/
 
 ## Summary
 
-The first impressions with K3s are very positive.
+The first impressions with K3s are very positive, and I am looking forward to
+exploring more advanced scenarios with it.
