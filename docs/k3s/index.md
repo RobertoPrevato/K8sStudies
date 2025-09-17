@@ -256,3 +256,13 @@ kubectl -n kube-system rollout restart deployment traefik
 ```
 
 And it started working! :tada: :tada: :tada:
+
+### Inspecting logs
+
+```bash
+# in one terminal...
+kubectl logs -f deployment/fortune-cookies -n fortunecookies
+
+# in another terminal...
+curl -k https://www.neoteroi.xyz/cookies/
+```
