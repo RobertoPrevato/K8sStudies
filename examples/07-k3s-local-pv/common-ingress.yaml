@@ -5,7 +5,7 @@ metadata:
   name: common-ingress
   namespace: common-ingress
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   tls:
     - hosts:
         - neoteroi.xyz
@@ -15,7 +15,7 @@ spec:
     - host: neoteroi.xyz
       http:
         paths:
-          - path: /cookies/
+          - path: /cookies
             pathType: Prefix
             backend:
               service:
@@ -25,7 +25,7 @@ spec:
     - host: www.neoteroi.xyz
       http:
         paths:
-          - path: /cookies/
+          - path: /cookies
             pathType: Prefix
             backend:
               service:

@@ -1,3 +1,11 @@
+## 2025-09-17
+
+- Add the [_K3s Index_](./k3s/index.md) page to describe my first steps with
+  _K3s_, including how to install it, deploy a simple web application that uses a _Persistent Volume_, and expose it using _Traefik_.
+- Add the [_K3s Ingress Per App_](./k3s/ingress-per-app.md) page to describe how to
+  expose multiple web applications on different domains using _K3s_ and
+  _Traefik_.
+
 ## 2025-08-09
 
 - Add the [_CloudNativePG_](./kind/cloudnativepg.md) page to describe my

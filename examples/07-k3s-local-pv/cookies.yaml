@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fortune-cookies
+  namespace: fortunecookies
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fortune-cookies
+  template:
+    metadata:
+      labels:
+        app: fortune-cookies
+    spec:
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: fortune-cookies
+          image: robertoprevato/fortunecookies:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: APP_ROUTE_PREFIX
+              value: cookies
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /cookies/
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /cookies/
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          volumeMounts:
+            - name: store-volume
+              mountPath: /home/store
+      volumes:
+        - name: store-volume
+          persistentVolumeClaim:
+            claimName: cookies-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fortune-cookies
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: fortune-cookies
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cookies-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
