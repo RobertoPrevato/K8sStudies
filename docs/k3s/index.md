@@ -3,25 +3,13 @@ title: K3s - Lightweight Kubernetes
 ---
 
 After practicing with Kind for a while, I wanted to explore another lightweight
-Kubernetes distribution that's gaining popularity: **K3s**. **K3s** is a better fit for
-local environments, as it's designed also for **production** workloads and it works well
-across system reboots.
+Kubernetes distribution that's gaining popularity: **K3s**. **K3s** seems to be a better
+fit for shared and persistent development environments, as it's designed also for
+**production** workloads and it works well across system reboots.
 
 ## What is K3s?
 
 [K3s](https://k3s.io/) is a certified Kubernetes distribution designed to be lightweight and easy to install. Developed by [Rancher Labs](https://rancher.com/) (now part of SUSE), K3s packages Kubernetes as a single binary of less than 100MB that requires minimal resources to run.
-
-The name "K3s" is a play on "K8s" (the common abbreviation for Kubernetes - with 8 letters between K and s). The "3" in K3s represents that it removes 5 from the 8 in K8s, signifying its lightweight nature.
-
-By default, K3s includes:
-
-- An ingress controller: [**Traefik**](https://traefik.io/traefik).
-- A built-in service load balancer.
-- A local storage provisioner.
-- A CNI (Container Network Interface).
-- A network policy controller.
-
-Each of these components can be disabled if not needed, or replaced with alternatives.
 
 ## Why K3s for Kubernetes Learning?
 
@@ -33,36 +21,28 @@ As I dive deeper into Kubernetes, K3s offers several advantages:
 - **Production-ready**: Not just for learning - it can be used in production environments
 - **Perfect for local development**: Fast startup time and low overhead
 
-## Key Features of K3s
+Fun fact: **Jeff Geerling** made a video on running a K3s cluster on a group of Raspberry Pi!
 
-- **Single binary packaging**: Entire Kubernetes system bundled into one file
-- **Embedded storage with SQLite**: No need for etcd (though it can be configured)
-- **Simplified management**: Automatic TLS certificate generation and simplified kubeconfig setup
-- **Packaged components**: Includes essential add-ons like CoreDNS, Traefik Ingress, and local storage provider
-- **Easy cluster formation**: Simple to create multi-node clusters with a join token
-- **Optimized for ARM**: Works well on Raspberry Pi and other ARM devices
+<iframe width="560" height="315" src="https://www.youtube.com/embed/N4bfNefjBSw?si=12e039MlolDlxUPN" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
-## Basic Installation
+## Default Installation
 
 To install K3s with default settings:
 
 ```bash
-# Install server
 curl -sfL https://get.k3s.io | sh -
 
-# Verify installation
+# verify installation…
 sudo k3s kubectl get nodes
 ```
 
-To configure `kubectl` access without using `sudo`, you can either:
-
-- export the KUBECONFIG environment variable:
+To configure `kubectl` access without using `sudo`, you can either export the `KUBECONFIG` environment variable:
 
 ```bash
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 ```
 
-- or merge the kubeconfig file:
+or merge the `kubeconfig` file:
 
 ```bash
 # First copy to a file you can access
@@ -93,16 +73,16 @@ Replacing `server-ip` and `token-from-server` with the actual values.
 
 ## Use Cases for K3s
 
-- **Learning environment**: Perfect for practicing Kubernetes concepts
-- **Development workstations**: Run Kubernetes locally without heavy resource usage
-- **Edge computing**: Deploy in resource-constrained environments
-- **IoT devices**: Run on ARM devices like Raspberry Pi
-- **CI/CD environments**: Fast startup makes it ideal for testing pipelines
-- **Small production deployments**: Suitable for smaller workloads and teams
+- **Learning environment**: Perfect for practicing Kubernetes concepts.
+- **Development workstations**: Run Kubernetes locally without heavy resource usage.
+- **Edge computing**: Deploy in resource-constrained environments.
+- **IoT devices**: Run on ARM devices like Raspberry Pi.
+- **CI/CD environments**: Fast startup makes it ideal for testing pipelines.
+- **Small production deployments**: Suitable for smaller workloads and teams.
 
 ## My first exercise
 
-For my first exercise, I wanted to try adapting the example about [volume mounting](../kind/mounting-volumes.md) to use K3s and persistent volumes, with Traefik instead of NGINX.
+For my first exercise, I wanted to try adapting the example about [volume mounting](../kind/mounting-volumes.md) to use K3s and persistent volumes, with Traefik instead of NGINX. This exercise includes exposing a web app with a self-signed SSL certificate.
 
 The README in `./examples/07-k3s-local-pv` includes commands to create the
 deployments.
@@ -112,7 +92,8 @@ deployments.
 There is an issue that, since my demo Fortune Cookies app expects a SQLite
 database populated with a `cookie` table and doesn't create one when using a
 volume mount, I needed to fix it manually after applying the `cookies.yaml`
-deployment.
+deployment. This was useful anyway to learn where K3s stores persistent volumes on
+the host system by default: `/var/lib/rancher/k3s/storage`.
 
 ```bash
 sudo su
@@ -249,7 +230,8 @@ Example
 </body>
 ```
 
-Then, with the assistance of `Claude Sonnet 3.7`, I simply restarted Traefik:
+Then, with the assistance of `Claude Sonnet 3.7` which pointed me to the right
+direction, I simply restarted Traefik:
 
 ```bash
 kubectl -n kube-system rollout restart deployment traefik
@@ -259,10 +241,16 @@ And it started working! :tada: :tada: :tada:
 
 ### Inspecting logs
 
+To inspect the logs of the running deployment:
+
 ```bash
-# in one terminal...
+# in one terminal…
 kubectl logs -f deployment/fortune-cookies -n fortunecookies
 
-# in another terminal...
+# in another terminal…
 curl -k https://www.neoteroi.xyz/cookies/
 ```
+
+## Summary
+
+The first impressions with K3s are very positive.
