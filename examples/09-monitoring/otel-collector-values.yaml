@@ -1,0 +1,50 @@
+mode: deployment
+
+# Add image configuration (required)
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: latest
+  pullPolicy: IfNotPresent
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          cors:
+            allowed_origins: "*"
+          endpoint: 0.0.0.0:4318
+    jaeger: null
+    prometheus: null
+    zipkin: null
+
+  processors:
+    batch:
+      timeout: 1s
+      send_batch_size: 1024
+
+  exporters:
+    prometheus:
+      endpoint: 0.0.0.0:8889
+      namespace: otel
+
+  service:
+    pipelines:
+      metrics:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [prometheus]
+      logs:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [debug]
+      traces:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [debug]
+
+# Remove service.type from the config section as it belongs here
+service:
+  type: ClusterIP
