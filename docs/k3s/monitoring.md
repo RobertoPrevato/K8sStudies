@@ -112,6 +112,49 @@ graph TD
     end
 ```
 
+/// admonition | Grafana alternative to OpenTelemetry Collector.
+    type: example
+
+**Grafana** offers a component that can be used as alternative to the OpenTelemetry Collector:
+**Grafana Alloy**.
+
+---
+
+**Grafana Alloy** is an open-source, vendor-neutral **telemetry collector**
+developed by Grafana Labs. It is designed to collect, process, and forward
+logs, metrics, and traces from your infrastructure to various backends,
+including Grafana Cloud, Prometheus, Loki, Tempo, and others.
+
+**Similarities to OpenTelemetry Collector:**
+
+- Both are **telemetry collectors** that can receive, process, and export
+  observability data (metrics, logs, traces).
+- Both support **pipelines** for transforming and routing data.
+- Both are extensible and support multiple protocols and backends.
+- **Grafana Alloy supports OTLP** (OpenTelemetry Protocol) for both metrics and
+  traces. Alloy can receive OTLP data over gRPC and HTTP, making it compatible
+  with OpenTelemetry SDKs and agents.
+
+
+**Differences:**
+
+- **Alloy** is built by Grafana Labs and is designed to work seamlessly with
+  the Grafana stack (Prometheus, Loki, Tempo, etc.), but is also
+  vendor-neutral.
+- **OpenTelemetry Collector** is a CNCF project and is the reference
+  implementation for the OpenTelemetry standard, aiming for broad
+  interoperability across vendors and formats.
+- Alloy has a configuration and extension model inspired by Prometheus Agent
+  and supports Prometheus scraping natively.
+
+**Summary:**
+
+Grafana Alloy and OpenTelemetry Collector serve similar purposes, but Alloy is
+more tightly integrated with the Grafana ecosystem, while OpenTelemetry
+Collector is more general-purpose and standards-focused.
+
+///
+
 ### Data Flow and Storage
 
 1. **Applications**: These are your services or applications that generate telemetry data
@@ -298,21 +341,77 @@ environments using filesystem storage, I am selecting the Helm **monolithic** ch
 method, like documented at [_Install the monolithic Helm chart_](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/).
 
 ```bash
-helm show values grafana/loki-stack > loki-default-values.yaml
+helm install loki grafana/loki -n monitoring --create-namespace -f loki-values.yaml
 ```
 
-```bash
-# Install Loki Stack
-helm install  --values loki-values.yaml \
-  loki grafana/loki-stack \
-  --namespace monitoring
-```
+The command should display an output like the following:
 
-The `grafana.enabled=false` parameter prevents the Loki chart from installing a duplicate
-Grafana instance since you already have one.
+```
+NAME: loki
+LAST DEPLOYED: Sun Sep 21 17:08:30 2025
+NAMESPACE: monitoring
+STATUS: deployed
+REVISION: 1
+NOTES:
+***********************************************************************
+ Welcome to Grafana Loki
+ Chart version: 6.40.0
+ Chart Name: loki
+ Loki version: 3.5.3
+***********************************************************************
+
+** Please be patient while the chart is being deployed **
+
+Tip:
+
+  Watch the deployment status using the command: kubectl get pods -w --namespace monitoring
+
+If pods are taking too long to schedule make sure pod affinity can be fulfilled in the current cluster.
+
+***********************************************************************
+Installed components:
+***********************************************************************
+* loki
+
+Loki has been deployed as a single binary.
+This means a single pod is handling reads and writes. You can scale that pod vertically by adding more CPU and memory resources.
+
+
+***********************************************************************
+Sending logs to Loki
+***********************************************************************
+
+Loki has been configured with a gateway (nginx) to support reads and writes from a single component.
+
+You can send logs from inside the cluster using the cluster DNS:
+
+http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push
+
+You can test to send data from outside the cluster by port-forwarding the gateway to your local machine:
+
+  kubectl port-forward --namespace monitoring svc/loki-gateway 3100:80 &
+
+And then using http://127.0.0.1:3100/loki/api/v1/push URL as shown below:
+
+curl -H "Content-Type: application/json" -XPOST -s "http://127.0.0.1:3100/loki/api/v1/push"  \
+--data-raw "{\"streams\": [{\"stream\": {\"job\": \"test\"}, \"values\": [[\"$(date +%s)000000000\", \"fizzbuzz\"]]}]}"
+
+Then verify that Loki did receive the data using the following command:
+
+curl "http://127.0.0.1:3100/loki/api/v1/query_range" --data-urlencode 'query={job="test"}' | jq .data.result
+
+***********************************************************************
+Connecting Grafana to Loki
+***********************************************************************
+
+If Grafana operates within the cluster, you'll set up a new Loki datasource by utilizing the following URL:
+
+http://loki-gateway.monitoring.svc.cluster.local/
+```
 
 Go back to Grafana, and add Loki as a data source, using the URL:
-`http://loki.monitoring.svc.cluster.local:3100`.
+`http://loki-gateway.monitoring.svc.cluster.local/` - this can require waiting
+for a few minutes.
 
 ### Testing a Python application
 
