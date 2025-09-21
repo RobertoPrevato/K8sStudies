@@ -29,6 +29,13 @@ config:
     prometheus:
       endpoint: 0.0.0.0:8889
       namespace: otel
+    otlp/tempo: # Grafana Tempo
+      endpoint: tempo.monitoring.svc.cluster.local:4317
+      tls:
+        insecure: true # Set to true if not using TLS
+    # Ref: https://grafana.com/docs/loki/latest/send-data/otel/
+    otlphttp: # Grafana Loki
+      endpoint: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
 
   service:
     pipelines:
@@ -39,11 +46,11 @@ config:
       logs:
         receivers: [otlp]
         processors: [batch]
-        exporters: [debug]
+        exporters: [otlphttp]
       traces:
         receivers: [otlp]
         processors: [batch]
-        exporters: [debug]
+        exporters: [otlp/tempo]
 
 # Remove service.type from the config section as it belongs here
 service:

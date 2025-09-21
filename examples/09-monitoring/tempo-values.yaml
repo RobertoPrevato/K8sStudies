@@ -1,0 +1,42 @@
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/traces
+    wal:
+      path: /var/tempo/wal
+
+minio:
+  enabled: false
+
+traces:
+  otlp:
+    grpc:
+      enabled: true
+    http:
+      enabled: true
+  zipkin:
+    enabled: false
+  jaeger:
+    thriftHttp:
+      enabled: false
+  opencensus:
+    enabled: false
+    thriftHttp:
+      enabled: false
+  opencensus:
+    enabled: false
+
+extraVolumeMounts:
+  - name: tempo-traces
+    mountPath: /var/tempo/traces
+  - name: tempo-wal
+    mountPath: /var/tempo/wal
+
+extraVolumes:
+  - name: tempo-traces
+    persistentVolumeClaim:
+      claimName: tempo-traces
+  - name: tempo-wal
+    persistentVolumeClaim:
+      claimName: tempo-wal
