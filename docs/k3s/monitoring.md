@@ -540,6 +540,24 @@ helm install opentelemetry-collector open-telemetry/opentelemetry-collector \
 The configuration file for the OpenTelemetry Collector must be well configured to
 send metrics to Prometheus, logs to Loki, and traces to Tempo.
 
+If something goes wrong, inspect the logs of the OpenTelemetry Collector pod. I had to
+inspect the logs a few times to get the configuration of the endpoints right, especially
+for this piece of configuration:
+
+```yaml
+  exporters:
+    prometheus:
+      endpoint: 0.0.0.0:8889
+      namespace: otel
+    otlp/tempo: # Grafana Tempo
+      endpoint: tempo.monitoring.svc.cluster.local:4317
+      tls:
+        insecure: true # Set to true if not using TLS
+    # Ref: https://grafana.com/docs/loki/latest/send-data/otel/
+    otlphttp: # Grafana Loki
+      endpoint: http://loki-gateway.monitoring.svc.cluster.local/otlp/
+```
+
 ## Test Sending Telemetries from an Application
 
 Now it is time to test sending telemetries to the OpenTelemetry Collector. For this
