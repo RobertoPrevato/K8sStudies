@@ -370,7 +370,7 @@ There are a few ways to install **Loki**. Since I am currently interested in hos
 local environments using filesystem storage, I am interested in a chart that deploys
 Loki to a single node.
 
-/// admonition | Outdated documentation.
+/// details | Beware of some outdated documentation…
     type: danger
 
 Initially I followed the documentation at: [_Install the monolithic Helm chart_](https://grafana.com/docs/loki/latest/setup/install/helm/install-monolithic/), but this documentation is
@@ -511,28 +511,7 @@ Go back to Grafana and add a **Tempo** data source using the URL:
 
 ![Grafana Tempo Data Source Added](/K8sStudies/img/grafana-tempo-added.png)
 
-For now I don't try sending data to it, as I want to later have a Telemetry Collector send traces to Tempo.
-
-### Testing a Python application
-
-OK, now I have a working Grafana and Prometheus installation on my Kubernetes cluster.
-How can I send the logs from a Python application using the OTLP standard, using env
-variables like `OTEL_EXPORTER_OTLP_ENDPOINT` and related?
-
-## OpenTelemetry Collector in Kubernetes Monitoring Setup
-
-The OpenTelemetry Collector is a separate component that should be deployed to your
-Kubernetes cluster alongside Prometheus and Grafana - not as part of either of them.
-
-## What is the OpenTelemetry Collector?
-
-The OpenTelemetry Collector acts as a middleware component that:
-
-1. Receives telemetry data (metrics, logs, traces) from your applications
-2. Processes that data (filtering, transforming, batching)
-3. Exports the data to your observability backends
-
-## Deploying the OpenTelemetry Collector
+### Installing OpenTelemetry Collector
 
 Let's start by adding the OpenTelemetry Helm repository:
 
@@ -542,23 +521,15 @@ helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm
 helm repo update
 ```
 
-Before deploying a collector, we need to create a configuration file. This file defines
-how the collector receives data, processes it, and exports it to Prometheus. This can be
-challenging because the OTEL Collector configuration offers many options, and many
-examples on the web are outdated. GitHub Copilot is helpful, but not perfect because of
-outdated examples on the internet.
-
-To investigate the current options, you can use the following command to obtain the
+To investigate all possible options, you can use the following command to obtain the
 default values for the Helm chart:
 
 ```bash
 helm show values open-telemetry/opentelemetry-collector > otel-default-values.yaml
 ```
 
-And read the documented YAML. The `./examples/09-monitoring/otel-collector-values.yaml`
-file in this repository contains a working example.
-
-You can deploy the collector using Helm:
+The `./examples/09-monitoring/otel-collector-values.yaml` file in this repository
+contains a working example. You can deploy the collector using Helm:
 
 ```bash
 helm install opentelemetry-collector open-telemetry/opentelemetry-collector \
@@ -566,10 +537,95 @@ helm install opentelemetry-collector open-telemetry/opentelemetry-collector \
   --values otel-collector-values.yaml
 ```
 
-You'll need to configure Prometheus to scrape metrics from this endpoint. With your
-existing Prometheus deployment, you can add a ServiceMonitor or update the Prometheus
-configuration to include the OpenTelemetry Collector endpoint.
+The configuration file for the OpenTelemetry Collector must be well configured to
+send metrics to Prometheus, logs to Loki, and traces to Tempo.
 
-The collector should be deployed in the same namespace as your other monitoring
-components (monitoring) for simplicity, though it can work across namespaces with proper
-configuration.
+## Test Sending Telemetries from an Application
+
+Now it is time to test sending telemetries to the OpenTelemetry Collector. For this
+purpose, I modified my [Fortune Cookie](https://github.com/RobertoPrevato/SQLiteWebDemo)
+application to support sending traces and logs using the OpenTelemetry SDK and the
+OTLP protocol.
+
+![Fortune Cookies](/K8sStudies/img/fortune-cookies-app.png)
+
+The application source code is available here on GitHub: [RobertoPrevato/SQLiteWebDemo](https://github.com/RobertoPrevato/SQLiteWebDemo).
+
+If you didn't follow the previous exercise where I deployed this application to
+Kubernetes, please do it now, following the instructions in my [K3s introduction](./index.md#my-first-exercise).
+
+Once you have a running application like in the previous exercise, you can modify the
+existing deployment to apply the necessary configuration to enable OpenTelemetry, by
+running:
+
+```bash
+# ./examples/09-monitoring/
+kubectl apply -n fortunecookies -f cookies.yaml
+```
+
+Note how the deployment now contains environment variables to configure
+OpenTelemetry:
+
+```yaml
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://opentelemetry-collector.monitoring.svc.cluster.local:4318
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: service.name=fortunecookies,service.namespace=fortunecookies,service.version=0.0.2,deployment.environment=local
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+```
+
+| Variable                      | Description                                                                                                                                                             |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | The endpoint of the OpenTelemetry Collector to which the application will send telemetry data. This is the URL of the service accessible inside the Kubernetes cluster. |
+| `OTEL_RESOURCE_ATTRIBUTES`    | Attributes that provide metadata about the service, such as its name, namespace, version, and deployment environment.                                                   |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | The protocol used to communicate with the OpenTelemetry Collector: "http/protobuf".                                                                                     |
+
+**OTEL_RESOURCE_ATTRIBUTES** is particularly useful for identifying and filtering telemetry data in the
+monitoring backend. Imagine having multiple services sending data to the same collector; these attributes help filtering
+and navigating the data in the Grafana UI.
+
+The demo application is configured to send traces and logs to the OpenTelemetry
+Collector for each web request (using a _middleware_), and has some dedicated endpoints
+to generate test logs and traces.
+
+| Endpoint                                  | Description                                                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| GET&nbsp;`/cookies/api/otel-tests/test`   | Logs a warning, a dependency call with random delay between 0.1 and 1.5s, and an extra trace for the request. |
+| GET&nbsp;`/cookies/api/otel-tests/crash`  | Simulates a crash by throwing an exception.                                                                   |
+| GET&nbsp;`/cookies/api/otel-tests/{name}` | Returns a Hello, {name}.                                                                                      |
+
+Testing these endpoints generates logs and traces that can be inspected in Grafana, like
+shown in the following picture and the pictures at the beginning of this post.
+
+![Grafana Logs 06](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/896212c6c59006d70dd0a5fe94aaa28df201a4c0/grafana-logs-06.png)
+
+Traces, custom events, unhandled exceptions with stack traces, logs, and dependency
+calls are visible and working in the Grafana UI.
+
+---
+
+It is worth noting that:
+
+1. The application generating logs is using the OTLP protocol and
+  simply changing the `OTEL_EXPORTER_OTLP_ENDPOINT` environment variable to point to a different
+  collector would allow sending logs and traces to a different backend, such as a cloud
+  provider's managed OpenTelemetry service.
+1. The demo application is written in Python, but OpenTelemetry SDKs are available for
+   many programming languages.
+
+## Summary
+
+In this article, I demonstrated how to deploy a complete monitoring stack in a single
+node of a Kubernetes cluster using Helm charts. The stack includes Prometheus for
+metrics, Grafana Loki for logs, Grafana Tempo for traces, and Grafana for visualization.
+I also deployed the OpenTelemetry Collector to receive telemetry data from applications,
+and showed how to configure a demo application to send logs and traces using the OTLP
+protocol.
+
+I had lots of fun doing this exercise, and I learned a lot about deploying and configuring
+these components. In some cases, the documentation was lacking or outdated, so I had to
+experiment and proceed by trial and error in some cases.
+
+What is missing from this exercise is testing sending metrics to the OpenTelemetry
+collector, which I plan to do soon.

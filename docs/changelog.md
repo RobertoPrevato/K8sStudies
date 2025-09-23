@@ -1,3 +1,12 @@
+## 2025-09-22
+
+- Add the [_K3s Monitoring_](./k3s/monitoring.md) page to describe how to deploy a
+  complete monitoring stack in a single-node _K3s_ cluster using _Helm_ charts. The
+  stack includes _Prometheus_ for metrics, _Grafana Loki_ for logs, _Grafana Tempo_
+  for traces, and _Grafana_ for visualization. I also deployed the _OpenTelemetry
+  Collector_ to receive telemetry data from applications, and showed how to configure
+  a demo application to send logs and traces using the _OTLP_ protocol.
+
 ## 2025-09-17
 
 - Add the [_K3s Index_](./k3s/index.md) page to describe my first steps with
