@@ -27,6 +27,18 @@ traces:
   opencensus:
     enabled: false
 
+tempo:
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://prometheus-server.monitoring.svc.cluster.local/api/v1/write"
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
+          - local-blocks
+
 extraVolumeMounts:
   - name: tempo-traces
     mountPath: /var/tempo/traces

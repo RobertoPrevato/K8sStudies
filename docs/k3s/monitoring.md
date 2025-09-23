@@ -1,6 +1,30 @@
-Now I want to make some experience with hosting monitoring infrastructure in Kubernetes.
-Since I know Prometheus and Grafana are widely used open source solutions for monitoring,
-I started reading about them.
+In this article and related examples, I provide a working solution for deploying a
+**complete monitoring stack** in a single node of a Kubernetes cluster, intended for
+**non-production** environments. Logs and metrics are stored on the local file system of
+the node. Although this setup is not suitable for production, it serves as a valuable
+exercise for learning how to deploy and configure these components. It can be useful for
+local development and testing, and it provides foundational knowledge for working with
+distributed and production environments.
+
+Follow this article using the files in the `./examples/09-monitoring` folder of this
+repository.
+
+The end result is a system that can collect and visualize informations like in
+the following pictures:
+
+![Grafana Logs 01](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/49717988955c9a37404874a08bdcae95ca6adbc1/grafana-loki-01.png)
+
+![Grafana Logs 03](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/49717988955c9a37404874a08bdcae95ca6adbc1/grafana-logs-05.png)
+
+![Grafana Logs 02](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/49717988955c9a37404874a08bdcae95ca6adbc1/grafana-logs-04.png)
+
+![Grafana Traces 01](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/49717988955c9a37404874a08bdcae95ca6adbc1/grafana-traces-06.png)
+
+![Grafana Traces 02](https://gist.github.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/49717988955c9a37404874a08bdcae95ca6adbc1/grafana-traces-04.png)
+
+![Grafana Traces 03](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/49717988955c9a37404874a08bdcae95ca6adbc1/grafana-traces-05.png)
+
+![Grafana Traces 04](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/49717988955c9a37404874a08bdcae95ca6adbc1/grafana-traces-04.png)
 
 As it often happens, cloud-native systems are distributed using **Helm charts**, and I
 will try using these to deploy monitoring. I didn't use **Helm** much so far because I
@@ -88,13 +112,10 @@ graph LR
     C -->|Visualization| D[User]
 ```
 
-In practice, however, modern applications often need to handle not just metrics but also
-logs and traces. To simplify the _collection_ of different kinds of records, the
-**OpenTelemetry Collector** is commonly used as a central component that can receive,
-process, and export all three types of telemetry data, accepting data in the
-**OpenTelemetry Protocol (OTLP)** format, which aims to provide a unified way to collect
-and transmit telemetry data across different services and platforms, in a
-**vendor-agnostic manner**.
+In practice, however, applications need to handle not just metrics but also
+logs and traces. To simplify the _collection_ of different kinds of records, a
+**Telemetry Collector** component is used as a central component that can receive,
+process, and export all three types of telemetry data.
 
 A more realistic and complete overview of a modern monitoring setup looks like this:
 
@@ -112,7 +133,54 @@ graph TD
     end
 ```
 
-/// admonition | Grafana alternative to OpenTelemetry Collector.
+### Data Flow and Storage
+
+1. **Applications**: These are your services or applications that generate telemetry data
+   (metrics, logs, traces). They can be instrumented to send this data to the OpenTelemetry
+   Collector.
+1. **OpenTelemetry Collector**: This component receives telemetry data from
+   applications. It can process, filter, and export this data to various backends for
+   storage and querying. It offers a common vendor-agnostic interface (OTLP) for receiving
+    telemetry data.
+1. **Storage Backends**: These are specialized services that store different types of
+   telemetry data: _metrics_, _logs_, and _traces_.
+1. **Grafana**: This is the visualization layer that connects to the various storage
+   backends. It allows users to create dashboards and panels to visualize and analyze the
+   telemetry data.
+
+Each storage backend stores and indexes its respective data type, allowing for efficient
+querying and retrieval.
+
+### OpenTelemetry in a Few Words
+
+**OpenTelemetry** was "born" in May 2019 when the two leading open-source observability
+projects, **OpenTracing** and **OpenCensus**, merged to form a single, unified standard.
+This merger was driven by the desire to standardize the collection of telemetry data
+(traces, metrics, and logs) and eliminate vendor lock-in, ultimately creating a
+vendor-neutral framework for collecting and exporting observability data.
+
+Today [**OpenTelemetry**](https://opentelemetry.io/docs/what-is-opentelemetry/) is an
+open-source observability framework that provides a set of tools, APIs, and SDKs for
+collecting and exporting telemetry data (metrics, logs, traces) from applications and
+services. It is a project under the Cloud Native Computing Foundation (CNCF) and is
+widely adopted in the cloud-native ecosystem.
+
+## Installing Components
+
+For my exercise, I will install the following components in my Kubernetes cluster:
+
+- **Prometheus**: For collecting and storing metrics.
+- **Grafana Loki**: For collecting and storing logs.
+- **Grafana Tempo**: For collecting and storing traces.
+- **Grafana**: For visualizing metrics, logs, and traces.
+- **OpenTelemetry Collector**: For the telemetry collector offering a common interface to
+  collect metrics, logs, and traces, and supporting the OTLP standard interface.
+
+I will configure _Persistent Volumes_ to ensure data durability across pod
+restarts.
+
+
+/// details | Grafana alternative to OpenTelemetry Collector.
     type: example
 
 **Grafana** offers a component that can be used as alternative to the OpenTelemetry Collector:
@@ -154,46 +222,6 @@ more tightly integrated with the Grafana ecosystem, while OpenTelemetry
 Collector is more general-purpose and standards-focused.
 
 ///
-
-### Data Flow and Storage
-
-1. **Applications**: These are your services or applications that generate telemetry data
-   (metrics, logs, traces). They can be instrumented to send this data to the OpenTelemetry
-   Collector.
-1. **OpenTelemetry Collector**: This component receives telemetry data from
-   applications. It can process, filter, and export this data to various backends for
-   storage and querying. It offers a common vendor-agnostic interface (OTLP) for receiving
-    telemetry data.
-1. **Storage Backends**: These are specialized services that store different types of
-   telemetry data: _metrics_, _logs_, and _traces_.
-1. **Grafana**: This is the visualization layer that connects to the various storage
-   backends. It allows users to create dashboards and panels to visualize and analyze the
-   telemetry data.
-
-Each storage backend stores and indexes its respective data type, allowing for efficient
-querying and retrieval.
-
-### OpenTelemetry in a Few Words
-
-[**OpenTelemetry**](https://opentelemetry.io/docs/what-is-opentelemetry/) is an
-open-source observability framework that provides a set of tools, APIs, and SDKs for
-collecting and exporting telemetry data (metrics, logs, traces) from applications and
-services. It is a project under the Cloud Native Computing Foundation (CNCF) and is
-widely adopted in the cloud-native ecosystem.
-
-## Installing Components
-
-For my exercise, I will install the following components in my Kubernetes cluster:
-
-- **Prometheus**: For collecting and storing metrics.
-- **Grafana Loki**: For collecting and storing logs.
-- **Grafana Tempo**: For collecting and storing traces.
-- **Grafana**: For visualizing metrics (and later logs and traces).
-- **Grafana Alloy**: For the telemetry collector offering a common interface to
-  collect metrics, logs, and traces, and supporting the OTLP standard interface.
-
-I will configure _Persistent Volumes_ to ensure data durability across pod
-restarts.
 
 ### Installing Prometheus
 
@@ -237,8 +265,8 @@ as visible with `kubectl get pvc -n monitoring`. The PVC folders are created at
 
 ### Installing Grafana
 
-The following will install the **Grafana visualization platform**
- in the same `monitoring` namespace, with ingress enabled to access it from outside the cluster:
+The following will install the **Grafana visualization platform** in the same
+ `monitoring` namespace, with ingress enabled to access it from outside the cluster:
 
 ```bash
 helm repo add grafana https://grafana.github.io/helm-charts
@@ -314,9 +342,11 @@ output above.
 
 ![Grafana login](/K8sStudies/img/grafana-local-signin.png)
 
-Once logged in, you can bind Prometheus as a data source. You can obtain the DNS name of
-the Prometheus service by running `kubectl get svc -n monitoring` to obtain the name
-of `prometheus-server`:
+At this point, Grafana is not so interesting because it has no data source configured.
+
+Once logged in, you can bind **Prometheus** as a data source. You can obtain the DNS
+name of the Prometheus service by running `kubectl get svc -n monitoring` to see which services were deployed by the Helm chart.
+In this case, we are interested in `prometheus-server`:
 
 ```bash {hl_lines="10"}
 kubectl get svc -n monitoring
@@ -331,13 +361,13 @@ prometheus-prometheus-pushgateway     ClusterIP   10.43.178.124   <none>        
 prometheus-server                     ClusterIP   10.43.248.242   <none>        80/TCP     56m
 ```
 
-And using the DNS name `prometheus-server.monitoring.svc.cluster.local` as the URL
+We must use the DNS name `prometheus-server.monitoring.svc.cluster.local` as the URL
 when adding a new data source in Grafana (`<service-name>.<namespace>.svc.cluster.local`).
 
 ### Installing Loki
 
-There are a few ways to install **Loki**. Since I am currently interested in hosting local
-environments using filesystem storage, I am interested in a chart that deploys
+There are a few ways to install **Loki**. Since I am currently interested in hosting
+local environments using filesystem storage, I am interested in a chart that deploys
 Loki to a single node.
 
 /// admonition | Outdated documentation.
@@ -455,7 +485,7 @@ More logs are visible, such as:
 These are **test log entries** generated by the Loki Helm chart’s installation
 instructions or by manual test commands.
 
-## Install Grafana Tempo
+### Installing Tempo
 
 To support _traces_, I want to install a service that can handle them. Since I am using Grafana for other components, I opt for **Grafana Tempo**.
 
@@ -483,19 +513,11 @@ Go back to Grafana and add a **Tempo** data source using the URL:
 
 For now I don't try sending data to it, as I want to later have a Telemetry Collector send traces to Tempo.
 
-## Install Promtail
-
-**Promtail** is an agent developed by Grafana Labs that is used to collect logs from your Kubernetes nodes (or other sources) and send them to Loki, which is a log aggregation system. Promtail is typically deployed as a DaemonSet in Kubernetes, so it runs on every node and tails the logs from containers (usually from containers). It can add labels (such as pod, namespace, and container name) to the logs, making them easy to query in Grafana via Loki.
-
-
-
 ### Testing a Python application
 
 OK, now I have a working Grafana and Prometheus installation on my Kubernetes cluster.
 How can I send the logs from a Python application using the OTLP standard, using env
 variables like `OTEL_EXPORTER_OTLP_ENDPOINT` and related?
-
-## TODO: correct this text
 
 ## OpenTelemetry Collector in Kubernetes Monitoring Setup
 
@@ -509,14 +531,6 @@ The OpenTelemetry Collector acts as a middleware component that:
 1. Receives telemetry data (metrics, logs, traces) from your applications
 2. Processes that data (filtering, transforming, batching)
 3. Exports the data to your observability backends
-
-## Architecture Overview
-
-In your monitoring setup, the components work together like this:
-
-```
-Python App (OTLP) → OpenTelemetry Collector → Prometheus → Grafana
-```
 
 ## Deploying the OpenTelemetry Collector
 

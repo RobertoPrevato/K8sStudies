@@ -35,7 +35,7 @@ config:
         insecure: true # Set to true if not using TLS
     # Ref: https://grafana.com/docs/loki/latest/send-data/otel/
     otlphttp: # Grafana Loki
-      endpoint: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+      endpoint: http://loki-gateway.monitoring.svc.cluster.local/otlp/
 
   service:
     pipelines:
