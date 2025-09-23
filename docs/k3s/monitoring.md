@@ -6,7 +6,7 @@ exercise for learning how to deploy and configure these components. It can be us
 local development and testing, and it provides foundational knowledge for working with
 distributed and production environments.
 
-Follow this article using the files in the `./examples/09-monitoring` folder of this
+Follow this article using the files in the `./examples/09-monitoring` folder of the
 repository.
 
 The end result is a system that can collect and visualize informations like in

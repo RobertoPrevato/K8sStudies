@@ -1,6 +1,5 @@
 mode: deployment
 
-# Add image configuration (required)
 image:
   repository: otel/opentelemetry-collector-contrib
   tag: latest
@@ -52,6 +51,5 @@ config:
         processors: [batch]
         exporters: [otlp/tempo]
 
-# Remove service.type from the config section as it belongs here
 service:
   type: ClusterIP
