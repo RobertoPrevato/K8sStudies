@@ -1,4 +1,4 @@
-In this article and related examples, I provide a working solution for deploying a
+In this exercise and related examples, I provide a working solution for deploying a
 **complete monitoring stack** in a single node of a Kubernetes cluster, intended for
 **non-production** environments. Logs and metrics are stored on the local file system of
 the node. Although this setup is not suitable for production, it serves as a valuable
