@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fortune-cookies
+  namespace: fortunecookies
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fortune-cookies
+  template:
+    metadata:
+      labels:
+        app: fortune-cookies
+    spec:
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: fortune-cookies
+          image: robertoprevato/fortunecookies:0.0.2
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: APP_ROUTE_PREFIX
+              value: cookies
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://opentelemetry-collector.monitoring.svc.cluster.local:4318
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: service.name=fortunecookies,service.namespace=fortunecookies,service.version=0.0.2,deployment.environment=local
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /cookies/
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /cookies/
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          volumeMounts:
+            - name: store-volume
+              mountPath: /home/store
+      volumes:
+        - name: store-volume
+          persistentVolumeClaim:
+            claimName: cookies-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fortune-cookies
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: fortune-cookies
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cookies-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

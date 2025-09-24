@@ -1,0 +1,55 @@
+mode: deployment
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: latest
+  pullPolicy: IfNotPresent
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          cors:
+            allowed_origins: "*"
+          endpoint: 0.0.0.0:4318
+    jaeger: null
+    prometheus: null
+    zipkin: null
+
+  processors:
+    batch:
+      timeout: 1s
+      send_batch_size: 1024
+
+  exporters:
+    prometheus:
+      endpoint: 0.0.0.0:8889
+      namespace: otel
+    otlp/tempo: # Grafana Tempo
+      endpoint: tempo.monitoring.svc.cluster.local:4317
+      tls:
+        insecure: true # Set to true if not using TLS
+    # Ref: https://grafana.com/docs/loki/latest/send-data/otel/
+    otlphttp: # Grafana Loki
+      endpoint: http://loki-gateway.monitoring.svc.cluster.local/otlp/
+
+  service:
+    pipelines:
+      metrics:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [prometheus]
+      logs:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [otlphttp]
+      traces:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [otlp/tempo]
+
+service:
+  type: ClusterIP

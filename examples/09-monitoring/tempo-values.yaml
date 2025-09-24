@@ -1,0 +1,54 @@
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/traces
+    wal:
+      path: /var/tempo/wal
+
+minio:
+  enabled: false
+
+traces:
+  otlp:
+    grpc:
+      enabled: true
+    http:
+      enabled: true
+  zipkin:
+    enabled: false
+  jaeger:
+    thriftHttp:
+      enabled: false
+  opencensus:
+    enabled: false
+    thriftHttp:
+      enabled: false
+  opencensus:
+    enabled: false
+
+tempo:
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://prometheus-server.monitoring.svc.cluster.local/api/v1/write"
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
+          - local-blocks
+
+extraVolumeMounts:
+  - name: tempo-traces
+    mountPath: /var/tempo/traces
+  - name: tempo-wal
+    mountPath: /var/tempo/wal
+
+extraVolumes:
+  - name: tempo-traces
+    persistentVolumeClaim:
+      claimName: tempo-traces
+  - name: tempo-wal
+    persistentVolumeClaim:
+      claimName: tempo-wal
