@@ -66,6 +66,7 @@ extra_javascript:
 
 plugins:
   - search
+  - glightbox
   - neoteroi.contribs:
       enabled_by_env: "GIT_CONTRIBS_ON" # Use the name you wish here
 

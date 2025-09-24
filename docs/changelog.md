@@ -1,4 +1,4 @@
-## 2025-09-22
+## 2025-09-24
 
 - Add the [_K3s Monitoring_](./k3s/monitoring.md) page to describe how to deploy a
   complete monitoring stack in a single-node _K3s_ cluster using _Helm_ charts. The

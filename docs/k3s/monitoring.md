@@ -1,16 +1,13 @@
-In this exercise and related examples, I provide a working solution for deploying a
-**complete monitoring stack** in a single node of a Kubernetes cluster, intended for
-**non-production** environments. Logs and metrics are stored on the local file system of
-the node. Although this setup is not suitable for production, it serves as a valuable
-exercise for learning how to deploy and configure these components. It can be useful for
-local development and testing, and it provides foundational knowledge for working with
-distributed and production environments.
+In this exercise and the related examples, I present a working solution for deploying a
+**complete monitoring stack** in a single node within a Kubernetes cluster, intended for
+**non-production** environments. Logs and metrics are stored locally on the node’s file
+system. Although this setup is not suitable for production use, it serves as a valuable
+learning opportunity for understanding how to deploy and configure these components.
+It can be useful for local development and testing, and it provides foundational
+knowledge for working with distributed and production environments.
 
-Follow this article using the files in the `./examples/09-monitoring` folder of the
-repository.
-
-The end result is a system that can collect and visualize informations like in
-the following pictures:
+The end result is a system that can collect telemetries at a single endpoint using
+a standard interface, and display informations like in the following pictures:
 
 ![Grafana Logs 01](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/49717988955c9a37404874a08bdcae95ca6adbc1/grafana-loki-01.png)
 
@@ -26,10 +23,11 @@ the following pictures:
 
 ![Grafana Traces 04](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/49717988955c9a37404874a08bdcae95ca6adbc1/grafana-traces-04.png)
 
-As it often happens, cloud-native systems are distributed using **Helm charts**, and I
-will try using these to deploy monitoring. I didn't use **Helm** much so far because I
-first wanted to learn the basics of Kubernetes, but now it's time to install it and use
-it.
+Examples are in the `./examples/09-monitoring` folder of the repository.
+
+Cloud-native systems are often distributed using **Helm charts**. I haven’t used
+**Helm** much so far because I wanted to first learn the basics of Kubernetes. However,
+now it's time to install it and start using it.
 
 ## Introduction to Helm
 
@@ -57,7 +55,7 @@ existing Helm charts to deploy monitoring systems.
 
 Like described in the official documentation:
 
-1. Download your desired version.
+1. Download your [desired version from GitHub](https://github.com/helm/helm/releases).
 1. Unpack it (`tar -zxvf helm-v3.0.0-linux-amd64.tar.gz`).
 1. Find the helm binary in the unpacked directory, and move it to its desired destination
    (`mv linux-amd64/helm /usr/local/bin/helm`).
@@ -599,9 +597,10 @@ OpenTelemetry:
 | `OTEL_RESOURCE_ATTRIBUTES`    | Attributes that provide metadata about the service, such as its name, namespace, version, and deployment environment.                                                   |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | The protocol used to communicate with the OpenTelemetry Collector: "http/protobuf".                                                                                     |
 
-**OTEL_RESOURCE_ATTRIBUTES** is particularly useful for identifying and filtering telemetry data in the
-monitoring backend. Imagine having multiple services sending data to the same collector; these attributes help filtering
-and navigating the data in the Grafana UI.
+**OTEL_RESOURCE_ATTRIBUTES** is particularly useful for identifying and filtering
+telemetry data in the monitoring backend. When multiple services are sending data to the
+same collector, these attributes help filtering and navigating the data in the Grafana
+UI.
 
 The demo application is configured to send traces and logs to the OpenTelemetry
 Collector for each web request (using a _middleware_), and has some dedicated endpoints
@@ -645,5 +644,6 @@ I had lots of fun doing this exercise, and I learned a lot about deploying and c
 these components. In some cases, the documentation was lacking or outdated, so I had to
 experiment and proceed by trial and error in some cases.
 
-What is missing from this exercise is testing sending metrics to the OpenTelemetry
-collector, which I plan to do soon.
+What is missing from this exercise is configuring Prometheus to scrape metrics from the
+OpenTelemetry Collector, which I plan to do later. Logs and traces are the kinds of
+records I care about collecting from applications the most at the moment.
