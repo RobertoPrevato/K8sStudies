@@ -13,10 +13,15 @@ spec:
       labels:
         app: fortune-cookies
     spec:
-      tolerations:
-        - key: "CriticalAddonsOnly"
-          operator: "Exists"
-          effect: "NoSchedule"
+      # Run DB migrations in a init container
+      initContainers:
+        - name: migrate
+          image: robertoprevato/fortunecookies:0.0.2
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", ". venv/bin/activate && alembic upgrade head"]
+          volumeMounts:
+            - name: store-volume
+              mountPath: /home/store
       containers:
         - name: fortune-cookies
           image: robertoprevato/fortunecookies:0.0.2
