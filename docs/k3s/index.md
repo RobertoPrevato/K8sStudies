@@ -91,28 +91,31 @@ deployments.
 
 ---
 
-There is an issue that, since my demo Fortune Cookies app expects a SQLite
+Since my demo Fortune Cookies app expects a SQLite
 database populated with a `cookie` table and doesn't create one when using a
-volume mount, I needed to fix it manually after applying the `cookies.yaml`
-deployment. This was useful anyway to learn where K3s stores persistent volumes on
-the host system by default: `/var/lib/rancher/k3s/storage`.
+volume mount, I needed to add the following fragment, to ensure a DB is
+initialized with `alembic upgrade head`:
 
-```bash
-sudo su
-
-# cd in the default folder used by K3s for persistent volumes
-cd /var/lib/rancher/k3s/storage
-
-cd pvc-*_fortunecookies*
-
-# copy a populated app.db (like the one in the examples folder) into here
-cp /path_to_your_repo/examples/07-k3s-local-pv/data/app.db .
+```yaml
+      # Run DB migrations in a init container
+      initContainers:
+        - name: migrate
+          image: robertoprevato/fortunecookies:0.0.2
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", ". venv/bin/activate && alembic upgrade head"]
+          volumeMounts:
+            - name: store-volume
+              mountPath: /home/store
 ```
+
+Investigating was useful anyway to learn where K3s stores persistent volumes on
+the host system by default: `/var/lib/rancher/k3s/storage`, and about
+`initContainers`
 
 ---
 
 At this point, I hoped the service would work like it did when I made the same
-with Kind and NGINX, but it didn't work. While investigating, I found the
+with Kind and NGINX, but it didn't. While investigating, I found the
 following error:
 
 ```bash {hl_lines="3"}
@@ -251,6 +254,30 @@ kubectl logs -f deployment/fortune-cookies -n fortunecookies
 
 # in another terminal…
 curl -k https://www.neoteroi.xyz/cookies/
+```
+
+## TL;DR
+
+```bash
+# ./examples/07-k3s-local
+kubectl apply -f traefik-config.yaml
+
+kubectl -n kube-system rollout restart deployment traefik
+
+kubectl create namespace fortunecookies
+
+kubectl apply -n fortunecookies -f cookies.yaml
+
+kubectl create namespace common-ingress
+
+cd ssl
+kubectl create secret tls neoteroi-xyz-tls \
+  --cert=neoteroi-xyz-tls.crt \
+  --key=neoteroi-xyz-tls.key \
+  -n common-ingress
+
+cd ../
+kubectl apply -n common-ingress -f common-ingress.yaml
 ```
 
 ## Summary

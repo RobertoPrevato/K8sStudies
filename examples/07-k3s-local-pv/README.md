@@ -5,6 +5,8 @@ This requires changing the defaults of Traefik to enable `ExternalName` services
 
 ```bash
 kubectl apply -f traefik-config.yaml
+
+kubectl -n kube-system rollout restart deployment traefik
 ```
 
 ---

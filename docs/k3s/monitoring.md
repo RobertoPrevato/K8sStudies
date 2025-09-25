@@ -1,10 +1,11 @@
-In this exercise and the related examples, I present a working solution for deploying a
-**complete monitoring stack** in a single node within a Kubernetes cluster, intended for
-**non-production** environments. Logs and metrics are stored locally on the node’s file
-system. Although this setup is not suitable for production use, it serves as a valuable
-learning opportunity for understanding how to deploy and configure these components.
-It can be useful for local development and testing, and it provides foundational
-knowledge for working with distributed and production environments.
+Here I present a working solution for deploying a **complete monitoring stack**
+in a single node within a Kubernetes cluster, intended for **non-production**
+environments. Logs and metrics are stored locally on the node’s file system.
+Although this setup is not suitable for production use, it serves as a valuable
+learning opportunity for understanding how to deploy and configure these
+components. It can be useful for local development and testing, and it provides
+foundational knowledge for working with distributed and production
+environments.
 
 The end result is a system that can collect telemetries at a single endpoint using
 a standard interface, and display informations like in the following pictures:
@@ -612,8 +613,16 @@ to generate test logs and traces.
 | GET&nbsp;`/cookies/api/otel-tests/crash`  | Simulates a crash by throwing an exception.                                                                   |
 | GET&nbsp;`/cookies/api/otel-tests/{name}` | Returns a Hello, {name}.                                                                                      |
 
-Testing these endpoints generates logs and traces that can be inspected in Grafana, like
-shown in the following picture and the pictures at the beginning of this post.
+Testing these endpoints generates logs and traces that can be inspected in
+Grafana, like shown in the following picture and the pictures at the beginning
+of this post. The fortune cookies app includes a Swagger interface, accessible
+at [`https://www.neoteroi.xyz/cookies/docs`](https://www.neoteroi.xyz/cookies/docs) if you followed the instructions.
+
+Otherwise, use `curl` to generate some web requests:
+
+```bash
+curl -k https://www.neoteroi.xyz/cookies/api/otel-tests/test
+```
 
 ![Grafana Logs 06](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/896212c6c59006d70dd0a5fe94aaa28df201a4c0/grafana-logs-06.png)
 
@@ -633,17 +642,18 @@ It is worth noting that:
 
 ## Summary
 
-In this article, I demonstrated how to deploy a complete monitoring stack in a single
-node of a Kubernetes cluster using Helm charts. The stack includes Prometheus for
-metrics, Grafana Loki for logs, Grafana Tempo for traces, and Grafana for visualization.
-I also deployed the OpenTelemetry Collector to receive telemetry data from applications,
-and showed how to configure a demo application to send logs and traces using the OTLP
-protocol.
+In this article, I demonstrated how to deploy a complete monitoring stack in a
+single node of a Kubernetes cluster using Helm charts and configuration files.
+The stack includes Prometheus for metrics, Grafana Loki for logs, Grafana Tempo
+for traces, and Grafana for visualization. I also deployed the OpenTelemetry
+Collector to receive telemetry data from applications, and showed how to
+configure a demo application to send logs and traces using the OTLP protocol.
 
-I had lots of fun doing this exercise, and I learned a lot about deploying and configuring
-these components. In some cases, the documentation was lacking or outdated, so I had to
-experiment and proceed by trial and error in some cases.
+I had lots of fun doing this exercise, and I learned a lot about deploying and
+configuring these components. In some cases, the documentation was lacking or
+outdated, so I had to experiment and proceed by trial and error.
 
-What is missing from this exercise is configuring Prometheus to scrape metrics from the
-OpenTelemetry Collector, which I plan to do later. Logs and traces are the kinds of
-records I care about collecting from applications the most at the moment.
+What is missing from this exercise is configuring Prometheus to scrape metrics
+from the OpenTelemetry Collector, which I plan to do later. Logs and traces are
+the kinds of records I care about collecting from applications the most at the
+moment.
