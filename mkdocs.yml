@@ -21,6 +21,7 @@ nav:
       - Introduction: k3s/index.md
       - Web Hosting: k3s/ingress-per-app.md
       - Monitoring: k3s/monitoring.md
+      - Azure Container Registry: k3s/acr.md
   - Diving deeper:
       - A bit of Docker history: diving-deeper/docker-history.md
   - CHANGELOG: changelog.md

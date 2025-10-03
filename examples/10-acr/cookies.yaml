@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fortune-cookies-acr
+  namespace: acrtest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fortune-cookies-acr
+  template:
+    metadata:
+      labels:
+        app: fortune-cookies-acr
+    spec:
+      imagePullSecrets:
+        - name: acr-secret
+      # Run DB migrations in a init container
+      initContainers:
+        - name: migrate
+          image: <your-acr-name>.azurecr.io/fortunecookies:0.0.2
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", ". venv/bin/activate && alembic upgrade head"]
+          volumeMounts:
+            - name: store-volume
+              mountPath: /home/store
+      containers:
+        - name: fortune-cookies-acr
+          image: <your-acr-name>.azurecr.io/fortunecookies:0.0.2
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://opentelemetry-collector.monitoring.svc.cluster.local:4318
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: service.name=acrtest,service.namespace=acrtest,service.version=0.0.2,deployment.environment=local
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          volumeMounts:
+            - name: store-volume
+              mountPath: /home/store
+      volumes:
+        - name: store-volume
+          persistentVolumeClaim:
+            claimName: cookies-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fortune-cookies-acr
+  namespace: acrtest
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: fortune-cookies-acr
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cookies-pvc
+  namespace: acrtest
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fortune-cookies-acr-ingress
+  namespace: acrtest
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: cookies.acr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fortune-cookies-acr
+                port:
+                  number: 80
+    - host: www.cookies.acr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fortune-cookies-acr
+                port:
+                  number: 80
