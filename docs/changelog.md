@@ -1,3 +1,9 @@
+## 2025-10-03
+
+- Add the [_Azure Container Registry_](./k3s/acr.md) exercise that describes how to pull
+  images from an Azure Container Registry to a Kubernetes cluster running on-premises,
+  using RBAC and following the principle of least privilege (*pull* access only).
+
 ## 2025-09-24
 
 - Add the [_K3s Monitoring_](./k3s/monitoring.md) page to describe how to deploy a
