@@ -640,6 +640,80 @@ It is worth noting that:
 1. The demo application is written in Python, but OpenTelemetry SDKs are available for
    many programming languages.
 
+## Improved Monitoring
+
+Earlier in this exercise I installed the plain-vanilla Prometheus and Grafana Helm
+charts. These were useful to understand the monitoring stack and start making experience
+with Prometheus and Grafana. These would require configuring many things explicitly,
+for instance, to collect CPU and RAM utilization of pods in Kubernetes.
+There is a better option: switching to the **Prometheus Operator** Helm chart. This
+includes several benefits:
+
+- Automatically discovers `PodMonitors`.
+- No manual scrape configuration needed.
+
+```bash
+# Uninstall current Grafana and Prometheus
+helm uninstall grafana -n monitoring
+helm uninstall prometheus -n monitoring
+
+# Install the kube-prometheus-stack
+helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack -n monitoring \
+  --set prometheus.ingress.enabled=true \
+  --set prometheus.ingress.hosts[0]=prometheus.local \
+  --set grafana.ingress.enabled=true \
+  --set grafana.ingress.hosts[0]=grafana.local \
+  --set alertmanager.ingress.enabled=true \
+  --set alertmanager.ingress.hosts[0]=alertmanager.local \
+  --set prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues=false \
+  --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+  --set grafana.adminPassword='<your-desired-password>'
+```
+
+The output of the command above should look like:
+
+```bash
+NAME: kube-prometheus-stack
+LAST DEPLOYED: Mon Oct 20 12:32:33 2025
+NAMESPACE: monitoring
+STATUS: deployed
+REVISION: 1
+NOTES:
+kube-prometheus-stack has been installed. Check its status by running:
+  kubectl --namespace monitoring get pods -l "release=kube-prometheus-stack"
+
+Get Grafana 'admin' user password by running:
+
+  kubectl --namespace monitoring get secrets kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d ; echo
+
+Access Grafana local instance:
+
+  export POD_NAME=$(kubectl --namespace monitoring get pod -l "app.kubernetes.io/name=grafana,app.kubernetes.io/instance=kube-prometheus-stack" -oname)
+  kubectl --namespace monitoring port-forward $POD_NAME 3000
+
+Visit https://github.com/prometheus-operator/kube-prometheus for instructions on how to create & configure Alertmanager and Prometheus instances using the Operator.
+```
+
+Sign-in to Grafana UI again using the new password, and since we recreated Grafana,
+add again the `Loki` and `Tempo` data sources like described above in this article.
+
+These settings ensure that Prometheus automatically scrapes PodMonitors installed in
+all namespaces:
+
+```bash
+  --set prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues=false \
+  --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+```
+
+Now Prometheus includes a set of useful dashboards for Kubernetes. It looks great!
+
+Now Grafana includes many useful dashboards, offering a view on many auto-discovered
+metrics, including CPU and RAM utilization for all namespaces and pods.
+
+![Prometheus Kubernetes 1](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/505d01e4f77d377c533a0313d2ee5426619f79ae/prometheus-kubernetes-01.png)
+![Prometheus Kubernetes 2](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/505d01e4f77d377c533a0313d2ee5426619f79ae/prometheus-kubernetes-02.png)
+![Prometheus Kubernetes 3](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/505d01e4f77d377c533a0313d2ee5426619f79ae/prometheus-kubernetes-03.png)
+
 ## Summary
 
 In this article, I demonstrated how to deploy a complete monitoring stack in a

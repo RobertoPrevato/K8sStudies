@@ -1,0 +1,28 @@
+# This example is appropriate for a local development environment
+# where we use a single node.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pgcluster
+  namespace: cnpg
+spec:
+  instances: 1
+  enableSuperuserAccess: true
+  storage:
+    size: 2Gi
+  # Enable monitoring - metrics will be available on port 9187
+  monitoring:
+    enablePodMonitor: true
+  postgresql:
+    parameters:
+      pg_stat_statements.max: "10000"
+      pg_stat_statements.track: all
+  managed:
+    services:
+      additional:
+        - selectorType: rw
+          serviceTemplate:
+            metadata:
+              name: cnpg-rw
+            spec:
+              type: LoadBalancer
