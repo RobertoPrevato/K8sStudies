@@ -1,0 +1,12 @@
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: backup-store
+  namespace: cnpg
+spec:
+  configuration:
+    destinationPath: https://roptk8spocstac.blob.core.windows.net/pgbackups
+    azureCredentials:
+      connectionString:
+        name: azure-creds
+        key: AZURE_STORAGE_CONNECTION_STRING

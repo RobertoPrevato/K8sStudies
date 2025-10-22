@@ -146,8 +146,258 @@ If you followed the instructions at [_Improved
 Monitoring_](./monitoring.md#improved-monitoring), the dashboard should work immediately
 when imported.
 
-## Enabling Back-Ups
+## Backup
 
-Reading time… [_CNPG backup_](https://cloudnative-pg.io/documentation/1.27/backup/).
+Reading time…
 
+- [_CNPG backup_](https://cloudnative-pg.io/documentation/1.27/backup/).
+- [_CloudNativePG Barman Cloud CNPG-I plugin_](https://cloudnative-pg.io/plugin-barman-cloud/docs/concepts/)
+
+CloudNativePG offers different ways to enable backups. For now, I want to enable full
+backups to an `Azure Storage Account`.
+
+/// admonition | Alternatives.
+    type: example
+
+If I wanted to store backups locally, I would check how to use _Longhorn_
+and _volume snapshots_. For now, it is simpler to use an object store like Azure Storage
+Account or AWS S3. There is the option of using _MinIO_, but I prefer avoiding this tool
+because I am wary of the practices of its maintainers[<sup>1</sup>](https://github.com/minio/object-browser/issues/3546).
+
+///
+
+### Install the Barman Plugin
+
+Install the Barman Plugin following the instructions here:
+
+https://cloudnative-pg.io/plugin-barman-cloud/docs/installation/
+
+Summary:
+
+1. Verify to run a version of CloudNativePG >= `1.26.0`.
+2. Verify that `cert-manager` is installed and available.
+
+```bash
+# verify it is installed…
+cmctl check api
+```
+
+`cert-manager` is a tool that creates TLS certificates for workloads in Kubernetes or
+OpenShift clusters and renews the certificates before they expire.
+
+In my case, the `cert-manager` was not installed anywhere: I didn't have the client
+installed in my host, nor the `cert-manager` component in my K3s cluster.
+
+Install the client in your host:
+
+```bash
+# install…
+brew install cmctl
+```
+
+After installing, I get this error because `cert-manager` is not installed in my cluster:
+
+```bash
+cmctl check api
+error: error finding the scope of the object: failed to get restmapping: unable to retrieve the complete list of server APIs: cert-manager.io/v1: no matches for cert-manager.io/v1, Resource=
+```
+
+Install the component in the cluster:
+
+1. Check what is the latest release here [on GitHub.](https://github.com/cert-manager/cert-manager/releases/).
+   At the time of this writing, it's `1.19.1`.
+2. Install it using the commands below.
+
+```bash
+# install
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.1/cert-manager.yaml
+
+# verify installation…
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=60s
+```
+
+The cert-manager installation automatically creates:
+- `cert-manager` namespace
+- Custom Resource Definitions (CRDs) - cluster-wide
+- ClusterRoles and ClusterRoleBindings - cluster-wide
+- cert-manager controller pods in the `cert-manager` namespace
+
+````bash
+# Verify the API is working
+cmctl check api
+````
+
+Then install the Barman plugin in `cnpg-system`:
+
+````bash
+# Install the Barman plugin in the cnpg-system namespace (where CNPG operator runs)
+kubectl apply -f https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.7.0/manifest.yaml -n cnpg-system
+````
+
+The output should look like:
+
+```bash
+customresourcedefinition.apiextensions.k8s.io/objectstores.barmancloud.cnpg.io unchanged
+serviceaccount/plugin-barman-cloud unchanged
+role.rbac.authorization.k8s.io/leader-election-role unchanged
+clusterrole.rbac.authorization.k8s.io/metrics-auth-role unchanged
+clusterrole.rbac.authorization.k8s.io/metrics-reader unchanged
+clusterrole.rbac.authorization.k8s.io/objectstore-editor-role unchanged
+clusterrole.rbac.authorization.k8s.io/objectstore-viewer-role unchanged
+clusterrole.rbac.authorization.k8s.io/plugin-barman-cloud unchanged
+rolebinding.rbac.authorization.k8s.io/leader-election-rolebinding unchanged
+clusterrolebinding.rbac.authorization.k8s.io/metrics-auth-rolebinding unchanged
+clusterrolebinding.rbac.authorization.k8s.io/plugin-barman-cloud-binding unchanged
+secret/plugin-barman-cloud-7g4226tm68 configured
+service/barman-cloud unchanged
+deployment.apps/barman-cloud unchanged
+Warning: spec.privateKey.rotationPolicy: In cert-manager >= v1.18.0, the default value changed from `Never` to `Always`.
+certificate.cert-manager.io/barman-cloud-client created
+certificate.cert-manager.io/barman-cloud-server created
+issuer.cert-manager.io/selfsigned-issuer created
+```
+
+Verify the deployment:
+
+```bash
+kubectl rollout status deployment -n cnpg-system barman-cloud
+
+# should be:
+deployment "barman-cloud" successfully rolled out
+```
+
+### Enabling Backups
+
+Now that the Barman Cloud Plugin is installed, I need to define an _ObjectStore_ using
+my chosen backend: Azure Blob, like [documented here](https://cloudnative-pg.io/documentation/1.27/appendixes/object_stores/#azure-blob-storage).
+
+Obtain the Storage Account connection string and create a secret in the right namespace
+like in the command below:
+
+```bash
+CONNSTRING='<conn string>'
+
+kubectl create secret generic azure-creds \
+  --from-literal=AZURE_STORAGE_CONNECTION_STRING=$CONNSTRING \
+  -n cnpg
+```
+
+Deploy the Barman object store like in the provided example:
+
+```bash
+# ./examples/11-cloudnativepg
+kubectl apply -f barman-store.yaml
+```
+
+Enable backups in the CNPG cluster manifest:
+
+```yaml {linenums="1" hl_lines="29-33 35-44"}
+# This example is appropriate for a local development environment
+# where we use a single node.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pgcluster
+  namespace: cnpg
+spec:
+  instances: 1
+  enableSuperuserAccess: true
+  storage:
+    size: 2Gi
+  # Enable monitoring - metrics will be available on port 9187
+  monitoring:
+    enablePodMonitor: true
+  postgresql:
+    parameters:
+      pg_stat_statements.max: "10000"
+      pg_stat_statements.track: all
+  managed:
+    services:
+      additional:
+        - selectorType: rw
+          serviceTemplate:
+            metadata:
+              name: cnpg-rw
+            spec:
+              type: LoadBalancer
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: backup-store
 ---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: daily-backup
+  namespace: cnpg
+spec:
+  schedule: "0 0 0 * * *" # Midnight daily
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+```
+
+The file `./examples/11-cloudnativepg/luster-03.yaml` is a working example to create
+base backups and WAL archives to a Barman object store named `backup-store`.
+
+```bash
+# ./examples/11-cloudnativepg
+kubectl apply -f cluster-03.yaml
+```
+
+Start a backup like [documented here](https://cloudnative-pg.io/plugin-barman-cloud/docs/usage/#performing-a-base-backup):
+
+```bash
+kubectl apply -f backup.yaml
+```
+
+Check the status:
+
+```bash
+kubectl get backup -n cnpg
+NAME             AGE   CLUSTER     METHOD   PHASE    ERROR
+backup-example   16s   pgcluster   plugin   failed   rpc error: code = Unknown desc = missing key AZURE_CONNECTION_STRING, inside secret azure-creds
+
+kubectl describe backup/backup-example -n cnpg
+```
+
+It works! :tada: :tada: :tada:.
+
+However, the CNPG dashboard doesn't show backups. To fix, you need to apply the changes
+described here: https://github.com/cloudnative-pg/grafana-dashboards/issues/37
+
+> Replace `cnpg_collector_first_recoverability_point` ➔ `barman_cloud_cloudnative_pg_io_first_recoverability_point`
+> Replace `cnpg_collector_last_available_backup_timestamp` ➔ `barman_cloud_cloudnative_pg_io_last_available_backup_timestamp`
+
+The `grafana-dashboard.json` file in the examples folder already has the correct values.
+
+The dashboard showing healthy base backups and WAL archiving look like in the following
+picture:
+
+![CNPG Grafana Dashboard with Healthy Backups](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/b6488130f40ec813714a781cc5941985e5f04fb8/cnpg-grafana-dashboard-archive.png)
+
+WAL archives are created every minute thanks to this configuration setting:
+`archive_timeout: "60s"`, however only if there are transactions.
+
+```yaml {hl_lines="4"}
+    parameters:
+      pg_stat_statements.max: "10000"
+      pg_stat_statements.track: all
+      archive_timeout: "60s" # Force WAL switch every minute
+```
+
+If the PostgreSQL is not used, yet, generate some activity to verify that WAL archives
+are created properly:
+
+```bash
+# Create some activity to force WAL generation
+PGPASSWORD=$PGPASSWORD psql -h localhost -p 5432 -U postgres postgres
+```
+
+```sql
+CREATE TABLE IF NOT EXISTS test_wal_activity (id serial, data text, created_at timestamp default now());
+INSERT INTO test_wal_activity (data) SELECT 'test data ' || generate_series(1,1000);
+```
+
+## Summary
