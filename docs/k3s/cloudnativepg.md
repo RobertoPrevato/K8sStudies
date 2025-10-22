@@ -401,3 +401,17 @@ INSERT INTO test_wal_activity (data) SELECT 'test data ' || generate_series(1,10
 ```
 
 ## Summary
+
+This tutorial successfully demonstrates a CloudNativePG setup in K3s suitable for
+non-production environments, covering three main areas: **installation**, **monitoring**,
+and **backup configuration**.
+
+### Next steps
+
+In the future I will look into roduction deployments that include:
+
+- Multi-node PostgreSQL clusters for high availability.
+- Possibly backups using _Volume Snapshots_.
+
+The complete setup provides a solid foundation for PostgreSQL workloads in Kubernetes
+with professional-grade monitoring and backup capabilities.
