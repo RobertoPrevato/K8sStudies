@@ -411,7 +411,4 @@ and **backup configuration**.
 In the future I will look into roduction deployments that include:
 
 - Multi-node PostgreSQL clusters for high availability.
-- Possibly backups using _Volume Snapshots_.
-
-The complete setup provides a solid foundation for PostgreSQL workloads in Kubernetes
-with professional-grade monitoring and backup capabilities.
+- Possibly, backups using _Volume Snapshots_.

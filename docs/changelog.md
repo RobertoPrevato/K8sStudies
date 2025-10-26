@@ -1,9 +1,9 @@
-## 2025-10-21
+## 2025-10-26
 
 - Improve the [_Monitoring_](./k3s/monitoring.md) exercise to include improved monitoring
   using the **kube-prometheus-stack** Helm chart for Prometheus and Grafana.
 - Add the [_CloudNativePG_](./k3s/cloudnativepg.md) exercise where I share my notes on
-  using CloudNative-PG in K3s, and also how to configure monitoring and backups with an
+  using CloudNative-PG in K3s, how to configure monitoring and backups with an
   Azure Storage Account.
 
 ## 2025-10-03
