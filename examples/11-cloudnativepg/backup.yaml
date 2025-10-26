@@ -1,0 +1,13 @@
+# See:
+# https://cloudnative-pg.io/plugin-barman-cloud/docs/usage/#performing-a-base-backup
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: backup-example
+  namespace: cnpg
+spec:
+  cluster:
+    name: pgcluster
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

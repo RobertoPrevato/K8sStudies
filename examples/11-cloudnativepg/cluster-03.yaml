@@ -1,0 +1,50 @@
+# This example is appropriate for a local development environment
+# where we use a single node.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pgcluster
+  namespace: cnpg
+spec:
+  instances: 1
+  enableSuperuserAccess: true
+  storage:
+    size: 2Gi
+  # Enable monitoring - metrics will be available on port 9187
+  monitoring:
+    enablePodMonitor: true
+  postgresql:
+    parameters:
+      pg_stat_statements.max: "10000"
+      pg_stat_statements.track: all
+      archive_timeout: "60s" # Force WAL switch every minute
+      wal_level: "replica" # Ensure proper WAL level for archiving
+      max_wal_size: "1GB" # Allow larger WAL files before rotation
+      checkpoint_completion_target: "0.9" # Smooth checkpoint distribution
+  managed:
+    services:
+      additional:
+        - selectorType: rw
+          serviceTemplate:
+            metadata:
+              name: cnpg-rw
+            spec:
+              type: LoadBalancer
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: backup-store
+        walRetentionPolicy: "14d"
+        dataRetentionPolicy: "14d"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: daily-backup
+  namespace: cnpg
+spec:
+  schedule: "0 0 0 * * *" # Midnight daily
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
