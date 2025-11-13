@@ -28,6 +28,7 @@ traces:
     enabled: false
 
 tempo:
+  retention: 720h
   metricsGenerator:
     enabled: true
     remoteWriteUrl: "http://prometheus-server.monitoring.svc.cluster.local/api/v1/write"
@@ -38,6 +39,11 @@ tempo:
           - service-graphs
           - span-metrics
           - local-blocks
+  queryFrontend:
+    search:
+      max_duration: 720h
+    metrics:
+      max_duration: 720h
 
 extraVolumeMounts:
   - name: tempo-traces
