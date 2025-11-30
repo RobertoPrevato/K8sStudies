@@ -23,6 +23,8 @@ nav:
       - Monitoring: k3s/monitoring.md
       - Azure Container Registry: k3s/acr.md
       - CloudNativePG: k3s/cloudnativepg.md
+  - kubeadm:
+      - Introduction: kubeadm/index.md
   - Diving deeper:
       - A bit of Docker history: diving-deeper/docker-history.md
   - CHANGELOG: changelog.md

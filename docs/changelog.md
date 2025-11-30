@@ -1,3 +1,7 @@
+## 2025-11-30
+
+- Start studying [_Kubeadm_](./kubeadm/index.md), using `virt-manager` to prepare nodes.
+
 ## 2025-10-26
 
 - Improve the [_Monitoring_](./k3s/monitoring.md) exercise to include improved monitoring
