@@ -6,6 +6,8 @@ virtual machines as a foundation to start studying `kubeadm`.
 
 - [X] Using `virt-manager` to create virtual machines in Linux using KVM.
 - [X] Creating nodes for Kubernetes using `virt-manager`.
+- [X] Cloning and configuring VMs manually, to understand each step.
+- [X] Cloning the VMs more efficiently, using `virt-sysprep` (best for automation).
 - [X] Getting started with `kubeadm`.
 
 ## Reference documentation
@@ -157,13 +159,14 @@ However, for now, I will stick to the default virtual network `192.168.122.0/24`
 
 ### Installing tools
 
-We could install tools directly in the virtual machine using the console in `virt-manager`,
-but to make this comfortably, we would need to enable support for the clip-board (to
-copy from the host and paste in the virtual machine). A more comfortable option, in my
-opinion, is to ssh from the host into the virtual machine.
+We could install tools directly in the virtual machines using the console provided by
+`virt-manager`, but to do this comfortably we would need to enable clipboard support
+(to copy commands from the host and paste them into the virtual machine).
+A more comfortable option, in my opinion, is to SSH from the host into the virtual
+machine.
 
 Obtain the IP address of the VM from within, using the console in `virt-manager`, to
-later SSH into the VM from a regular terminal.
+then SSH into the VM from a regular terminal.
 
 ```bash
 # on the vm…
@@ -261,7 +264,15 @@ grep SystemdCgroup /etc/containerd/config.toml
 
 ---
 
-## Cloning the VM template
+## Configuring VMs manually
+
+This section of the page describes how to configure VMs manually, using the `virt-manager`
+graphical user interface and entering each VM using `SSH`. This is useful as a learning
+exercise and to understand each step. However, it's pretty boring and inefficient if
+done too often. If you wish, skip this part and go directly to the section describing
+how to configure VMs in a more automation-friendly manner, at [_Using virt-sysprep_](./index.md#using-virt-sysprep).
+
+---
 
 Once the base VM template is ready, clone it three times into:
 
@@ -286,35 +297,6 @@ hostnamectl
 ```
 
 ### Assign a static IP
-
-Ubuntu Server 24.04 uses Netplan for network configuration.
-Find your network interface name:
-
-```bash
-ip a
-```
-
-```bash
-# Set new hostname (e.g., control-plane, worker-1, worker-2)
-sudo hostnamectl set-hostname control-plane
-
-# Verify
-hostnamectl
-```
-
-**Also update hosts:**
-
-```bash
-sudo nano /etc/hosts
-```
-
-Change the line with `127.0.1.1` to match the new hostname:
-
-```
-127.0.1.1 control-plane
-```
-
-## 2. Assign Static IP with Netplan
 
 Ubuntu Server 24.04 uses **Netplan** for network configuration.
 
@@ -387,7 +369,7 @@ Reboot to Ensure Changes Persist:
 sudo reboot
 ```
 
-## Complete Workflow for Each Cloned VM
+Do it for each VM:
 
 **Control Plane (192.168.122.10):**
 ```bash
@@ -421,7 +403,7 @@ sudo reboot
 
 ### Verify Configuration
 
-After reboot on each node:
+After rebooting each node:
 
 ```bash
 # Check hostname
@@ -438,3 +420,157 @@ ping -c 2 worker-2
 
 This ensures each VM has a unique hostname and static IP that persists across reboots,
 which is essential for a stable Kubernetes cluster.
+
+## Using virt-sysprep
+
+Manual configuration like the one above is terribly boring. It is _OK_ as a learning
+exercise and understand each step. A better alternative is using **`virt-sysprep`** to
+prepare virtual machines from templates. It automates cleanup and customization, making
+it much better than manual changes after cloning.
+
+**`virt-sysprep`** removes machine-specific configuration from VMs to prepare them as
+templates:
+
+- Removes SSH host keys (regenerated on first boot)
+- Clears machine-id
+- Removes network configuration (MAC addresses, DHCP leases)
+- Clears logs and temporary files
+- Can set hostname, static IPs, and more
+
+Install on the host:
+
+```bash
+# On the host
+sudo apt install libguestfs-tools
+```
+
+Basic Workflow:
+
+1. Create and Configure Your Base VM Template
+2. Clean the Template VM
+
+```bash
+# Basic cleanup (removes machine-specific data)
+sudo virt-sysprep -d ubuntu-server24.04-a
+```
+3. Clone VMs
+
+```bash
+# Clone in virt-manager GUI, or via command line:
+sudo virt-clone --original ubuntu-server24.04-a \
+  --name control-plane \
+  --auto-clone
+
+sudo virt-clone --original ubuntu-server24.04-a \
+  --name worker-1 \
+  --auto-clone
+
+sudo virt-clone --original ubuntu-server24.04-a \
+  --name worker-2 \
+  --auto-clone
+```
+4. Customize Each Clone with virt-sysprep
+
+**Control Plane:**
+```bash
+sudo virt-sysprep -d control-plane \
+  --hostname control-plane \
+  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
+```
+
+**Worker-1:**
+```bash
+sudo virt-sysprep -d worker-1 \
+  --hostname worker-1 \
+  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
+```
+
+**Worker-2:**
+```bash
+sudo virt-sysprep -d worker-2 \
+  --hostname worker-2 \
+  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
+```
+
+## Set Static IPs with virt-sysprep
+
+Create netplan config files and inject them, use the `control-plane-netplan.yaml`
+provided in `./examples/12-virt-manager`:
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    enp1s0:
+      dhcp4: false
+      addresses:
+        - 192.168.122.10/24
+      routes:
+        - to: default
+          via: 192.168.122.1
+      nameservers:
+        addresses:
+          - 192.168.122.1
+          - 8.8.8.8
+```
+
+**Apply with virt-sysprep:**
+```bash
+sudo virt-sysprep -d worker-3 \
+  --hostname worker-3 \
+  --copy-in worker-3-netplan.yaml:/etc/netplan/ \
+  --run-command 'mv /etc/netplan/worker-3-netplan.yaml /etc/netplan/50-cloud-init.yaml' \
+  --run-command 'sed -i "s/127.0.1.1.*/127.0.1.1 worker-3/" /etc/hosts' \
+  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.13 worker-3" >> /etc/hosts'
+```
+
+Create a script to automate the entire process:
+
+```bash
+#!/bin/bash
+
+# Clone VMs
+for VM in control-plane worker-1 worker-2; do
+  sudo virt-clone --original ubuntu-server24.04-a \
+    --name $VM \
+    --auto-clone
+done
+
+# Configure control-plane
+sudo virt-sysprep -d control-plane \
+  --hostname control-plane \
+  --run-command 'sed -i "s/127.0.1.1.*/127.0.1.1 control-plane/" /etc/hosts' \
+  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
+
+# Configure worker-1
+sudo virt-sysprep -d worker-1 \
+  --hostname worker-1 \
+  --run-command 'sed -i "s/127.0.1.1.*/127.0.1.1 worker-1/" /etc/hosts' \
+  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
+
+# Configure worker-2
+sudo virt-sysprep -d worker-2 \
+  --hostname worker-2 \
+  --run-command 'sed -i "s/127.0.1.1.*/127.0.1.1 worker-2/" /etc/hosts' \
+  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
+  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
+
+echo "VMs cloned and configured. Start them with:"
+echo "  sudo virsh start control-plane"
+echo "  sudo virsh start worker-1"
+echo "  sudo virsh start worker-2"
+```
