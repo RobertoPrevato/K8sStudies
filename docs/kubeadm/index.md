@@ -266,7 +266,7 @@ grep SystemdCgroup /etc/containerd/config.toml
 
 ## Configuring VMs manually
 
-This section of the page describes how to configure VMs manually, using the `virt-manager`
+This section describes how to configure VMs manually, using the `virt-manager`
 graphical user interface and entering each VM using `SSH`. This is useful as a learning
 exercise and to understand each step. However, it's pretty boring and inefficient if
 done too often. If you wish, skip this part and go directly to the section describing
@@ -279,6 +279,7 @@ Once the base VM template is ready, clone it three times into:
 - **control-panel**
 - **worker-1**
 - **worker-2**
+- **worker-3**
 
 ![Virt manager ](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/2411475a25e92030d5a560ef58259d86cba8431e/virt-manager-vms.png)
 
@@ -296,57 +297,84 @@ hostnamectl
 127.0.1.1 control-plane
 ```
 
-### Assign a static IP
+### Assign static IPs
 
 Ubuntu Server 24.04 uses **Netplan** for network configuration.
+The best option to assign static IPs to virtual machines is to keep the VMs
+configured for DHCP, but assign static IPs by MAC address in the configuration of
+the virtual network.
 
-**Find your network interface name:**
-```bash
-ip a
-# Look for interface like enp1s0, ens3, etc.
-```
-
-**Edit netplan configuration:**
+Step 1: obtain MAC address for each VM.
 
 ```bash
-sudo nano /etc/netplan/50-cloud-init.yaml
+# List all VMs with their MAC addresses
+sudo virsh dumpxml ubuntu-server24.04-control-plane | grep "mac address"
+sudo virsh dumpxml ubuntu-server24.04-worker-1 | grep "mac address"
+sudo virsh dumpxml worker-2 | grep "mac address"
+sudo virsh dumpxml worker-3 | grep "mac address"
+
+# Output will look like:
+#  <mac address='52:54:00:d2:44:4c'/>
+#  <mac address='52:54:00:93:2d:94'/>
+#  <mac address='52:54:00:d8:2f:a0'/>
+#  <mac address='52:54:00:e7:c6:37'/>
 ```
 
-**Replace the content with:**
+Or from `virt-manager` GUI:
 
-```yaml
-network:
-  version: 2
-  ethernets:
-    enp1s0:  # Replace with your actual interface name
-      dhcp4: false
-      addresses:
-        - 192.168.122.10/24  # Control plane: .10, Worker-1: .11, Worker-2: .12
-      routes:
-        - to: default
-          via: 192.168.122.1
-      nameservers:
-        addresses:
-          - 192.168.122.1
-          - 8.8.8.8
-```
+- Open VM details.
+- Go to "NIC" section.
+- Note the MAC address.
 
-**Apply the configuration:**
+Step 2: edit the virtual network.
 
 ```bash
-sudo netplan apply
-
-# Verify
-ip a
+sudo virsh net-edit default
 ```
 
-/// admonition | The SSH connection will drop after changing IP.
-    type: info
+Add DHCP Host Entries
 
-If you apply `sudo netplan apply` using an SSH session from the host, the connection
-will be lost. Open a new one using the new ip.
+```xml {linenums="1" hl_lines="10-14"}
+<network>
+  <name>default</name>
+  <uuid>...</uuid>
+  <forward mode='nat'/>
+  <bridge name='virbr0' stp='on' delay='0'/>
+  <mac address='52:54:00:xx:xx:xx'/>
+  <ip address='192.168.122.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.122.100' end='192.168.122.254'/>
+      <!-- Static assignments -->
+      <host mac='52:54:00:d2:44:4c' name='control-plane' ip='192.168.122.10'/>
+      <host mac='52:54:00:93:2d:94' name='worker-1' ip='192.168.122.11'/>
+      <host mac='52:54:00:d8:2f:a0' name='worker-2' ip='192.168.122.12'/>
+      <host mac='52:54:00:e7:c6:37' name='worker-3' ip='192.168.122.13'/>
+    </dhcp>
+  </ip>
+</network>
+```
 
-///
+**Important:** Replace the MAC addresses with your actual MAC addresses from Step 1.
+
+Step 4: Restart the Network
+
+```bash
+# Destroy and restart the network
+sudo virsh net-destroy default
+sudo virsh net-start default
+
+# Verify it's running
+sudo virsh net-list
+```
+
+Start the VMs:
+
+```bash
+sudo virsh start control-plane
+sudo virsh start worker-1
+sudo virsh start worker-2
+sudo virsh start worker-3
+```
 
 Update hosts on all nodes (this is fine for learning and small environments).
 On the host and **each VM**, add entries for all cluster nodes:
@@ -359,6 +387,7 @@ sudo nano /etc/hosts
 192.168.122.10  control-plane
 192.168.122.11  worker-1
 192.168.122.12  worker-2
+192.168.122.13  worker-3
 ```
 
 This allows nodes to communicate using hostnames.
@@ -366,38 +395,6 @@ This allows nodes to communicate using hostnames.
 Reboot to Ensure Changes Persist:
 
 ```bash
-sudo reboot
-```
-
-Do it for each VM:
-
-**Control Plane (192.168.122.10):**
-```bash
-sudo hostnamectl set-hostname control-plane
-sudo nano /etc/hosts  # Update 127.0.1.1 line
-sudo nano /etc/netplan/50-cloud-init.yaml  # Set IP to 192.168.122.10
-sudo netplan apply
-sudo nano /etc/hosts  # Add all cluster nodes
-sudo reboot
-```
-
-**Worker-1 (192.168.122.11):**
-```bash
-sudo hostnamectl set-hostname worker-1
-sudo nano /etc/hosts  # Update 127.0.1.1 line
-sudo nano /etc/netplan/50-cloud-init.yaml  # Set IP to 192.168.122.11
-sudo netplan apply
-sudo nano /etc/hosts  # Add all cluster nodes
-sudo reboot
-```
-
-**Worker-2 (192.168.122.12):**
-```bash
-sudo hostnamectl set-hostname worker-2
-sudo nano /etc/hosts  # Update 127.0.1.1 line
-sudo nano /etc/netplan/50-cloud-init.yaml  # Set IP to 192.168.122.12
-sudo netplan apply
-sudo nano /etc/hosts  # Add all cluster nodes
 sudo reboot
 ```
 
@@ -416,6 +413,7 @@ ip a | grep inet
 ping -c 2 control-plane
 ping -c 2 worker-1
 ping -c 2 worker-2
+ping -c 2 worker-3
 ```
 
 This ensures each VM has a unique hostname and static IP that persists across reboots,
@@ -460,14 +458,6 @@ sudo virt-sysprep -d ubuntu-server24.04-a
 sudo virt-clone --original ubuntu-server24.04-a \
   --name control-plane \
   --auto-clone
-
-sudo virt-clone --original ubuntu-server24.04-a \
-  --name worker-1 \
-  --auto-clone
-
-sudo virt-clone --original ubuntu-server24.04-a \
-  --name worker-2 \
-  --auto-clone
 ```
 4. Customize Each Clone with virt-sysprep
 
@@ -477,100 +467,12 @@ sudo virt-sysprep -d control-plane \
   --hostname control-plane \
   --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
   --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
-```
-
-**Worker-1:**
-```bash
-sudo virt-sysprep -d worker-1 \
-  --hostname worker-1 \
-  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
-```
-
-**Worker-2:**
-```bash
-sudo virt-sysprep -d worker-2 \
-  --hostname worker-2 \
-  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
-```
-
-## Set Static IPs with virt-sysprep
-
-Create netplan config files and inject them, use the `control-plane-netplan.yaml`
-provided in `./examples/12-virt-manager`:
-
-```yaml
-network:
-  version: 2
-  ethernets:
-    enp1s0:
-      dhcp4: false
-      addresses:
-        - 192.168.122.10/24
-      routes:
-        - to: default
-          via: 192.168.122.1
-      nameservers:
-        addresses:
-          - 192.168.122.1
-          - 8.8.8.8
-```
-
-**Apply with virt-sysprep:**
-```bash
-sudo virt-sysprep -d worker-3 \
-  --hostname worker-3 \
-  --copy-in worker-3-netplan.yaml:/etc/netplan/ \
-  --run-command 'mv /etc/netplan/worker-3-netplan.yaml /etc/netplan/50-cloud-init.yaml' \
-  --run-command 'sed -i "s/127.0.1.1.*/127.0.1.1 worker-3/" /etc/hosts' \
-  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
   --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts' \
   --run-command 'echo "192.168.122.13 worker-3" >> /etc/hosts'
 ```
 
-Create a script to automate the entire process:
+Use the script provided in `./examples/11-virt-manager/create-nodes-vms.sh`.
 
-```bash
-#!/bin/bash
+And configure IP addresses like described at [_Assign static IPs_](./index.md#assign-static-ips).
 
-# Clone VMs
-for VM in control-plane worker-1 worker-2; do
-  sudo virt-clone --original ubuntu-server24.04-a \
-    --name $VM \
-    --auto-clone
-done
-
-# Configure control-plane
-sudo virt-sysprep -d control-plane \
-  --hostname control-plane \
-  --run-command 'sed -i "s/127.0.1.1.*/127.0.1.1 control-plane/" /etc/hosts' \
-  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
-
-# Configure worker-1
-sudo virt-sysprep -d worker-1 \
-  --hostname worker-1 \
-  --run-command 'sed -i "s/127.0.1.1.*/127.0.1.1 worker-1/" /etc/hosts' \
-  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
-
-# Configure worker-2
-sudo virt-sysprep -d worker-2 \
-  --hostname worker-2 \
-  --run-command 'sed -i "s/127.0.1.1.*/127.0.1.1 worker-2/" /etc/hosts' \
-  --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
-  --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts'
-
-echo "VMs cloned and configured. Start them with:"
-echo "  sudo virsh start control-plane"
-echo "  sudo virsh start worker-1"
-echo "  sudo virsh start worker-2"
-```
+## Creating the cluster
