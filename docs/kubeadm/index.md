@@ -90,9 +90,11 @@ flowchart TD
     Clone --> N2[Worker Node 1]
     Clone --> N3[Worker Node 2]
 
-    N1 --> CP1[Update hostname:<br/>**control-plane**<br/>Optional: set static IP.]
-    N2 --> W1[Update hostname:<br/>**worker-1**<br/>Optional: set static IP.]
-    N3 --> W2[Update hostname:<br/>**worker-2**<br/>Optional: set static IP.]
+    N1 --> CP1[Update hostname:<br/>**control-plane**]
+    N2 --> W1[Update hostname:<br/>**worker-1**]
+    N3 --> W2[Update hostname:<br/>**worker-2**]
+
+    W2 --> W3[Set static IPs]
 
     CP1 --> CP2[Start all VMs]
     W1 --> CP2
@@ -249,7 +251,7 @@ cgroup driver. There are two options:
 - `systemd` Recommended for systemd-based Linux distributions (like Ubuntu)
 - `cgroupfs` Legacy option
 
-By default, containerd uses cgroupfs `SystemdCgroup = false`; and kubeleto on
+By default, containerd uses cgroupfs `SystemdCgroup = false`; and kubelet on
 Ubuntu 24.04 with systemd, defaults to systemd cgroup driver.
 This mismatch causes problems, so you need to configure containerd to use systemd.
 
@@ -262,6 +264,37 @@ and what you've correctly included in your notes.
 grep SystemdCgroup /etc/containerd/config.toml
 ```
 
+**Enable IP forwarding and bridge networking.**
+
+Kubernetes requires IP forwarding and bridge networking to be enabled. Configure kernel
+modules and sysctl parameters:
+
+```bash
+# Load required kernel modules
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# Configure sysctl parameters for Kubernetes networking
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+# Apply sysctl parameters without reboot
+sudo sysctl --system
+
+# Verify settings
+sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
+```
+
+All three values should return `1`.
+
 ---
 
 ## Configuring VMs manually
@@ -270,13 +303,13 @@ This section describes how to configure VMs manually, using the `virt-manager`
 graphical user interface and entering each VM using `SSH`. This is useful as a learning
 exercise and to understand each step. However, it's pretty boring and inefficient if
 done too often. If you wish, skip this part and go directly to the section describing
-how to configure VMs in a more automation-friendly manner, at [_Using virt-sysprep_](./index.md#using-virt-sysprep).
+how to configure VMs in a more automation-friendly manner, at [_Using virt-sysprep_](#using-virt-sysprep).
 
 ---
 
 Once the base VM template is ready, clone it three times into:
 
-- **control-panel**
+- **control-plane**
 - **worker-1**
 - **worker-2**
 - **worker-3**
@@ -308,8 +341,8 @@ Step 1: obtain MAC address for each VM.
 
 ```bash
 # List all VMs with their MAC addresses
-sudo virsh dumpxml ubuntu-server24.04-control-plane | grep "mac address"
-sudo virsh dumpxml ubuntu-server24.04-worker-1 | grep "mac address"
+sudo virsh dumpxml control-plane | grep "mac address"
+sudo virsh dumpxml worker-1 | grep "mac address"
 sudo virsh dumpxml worker-2 | grep "mac address"
 sudo virsh dumpxml worker-3 | grep "mac address"
 
@@ -355,6 +388,9 @@ Add DHCP Host Entries
 ```
 
 **Important:** Replace the MAC addresses with your actual MAC addresses from Step 1.
+
+This method ensures that DHCP won't assign the IPs to other machines, regardless of
+start order.
 
 Step 4: Restart the Network
 
@@ -471,8 +507,192 @@ sudo virt-sysprep -d control-plane \
   --run-command 'echo "192.168.122.13 worker-3" >> /etc/hosts'
 ```
 
-Use the script provided in `./examples/11-virt-manager/create-nodes-vms.sh`.
+Use the script provided in `examples/12-virt-manager/create-nodes-vms.sh`.
 
-And configure IP addresses like described at [_Assign static IPs_](./index.md#assign-static-ips).
+And configure IP addresses like described at [_Assign static IPs_](#assign-static-ips).
 
 ## Creating the cluster
+
+Once the VMs are ready with hostnames and static IPs configured, we can proceed to
+create the Kubernetes cluster using `kubeadm`.
+
+### Initialize the control plane
+
+SSH into the control plane node:
+
+```bash
+ssh ro@192.168.122.10
+# or
+ssh ro@control-plane
+```
+
+Initialize the cluster on the control plane node. The `--pod-network-cidr` flag is
+required for certain CNI plugins. For **Flannel**, which I'll use in this example,
+the CIDR must be `10.244.0.0/16`:
+
+```bash
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+```
+
+The initialization process takes a few minutes. When it completes successfully, you'll
+see output that includes:
+
+- Instructions to set up `kubectl` for the regular user
+- A `kubeadm join` command to join worker nodes to the cluster
+
+**Important:** Save the `kubeadm join` command from the output. It will look something
+like:
+
+```bash
+kubeadm join 192.168.122.10:6443 --token <token> \
+    --discovery-token-ca-cert-hash sha256:<hash>
+```
+
+### Configure kubectl for the regular user
+
+To use `kubectl` as a non-root user, configure the kubeconfig file:
+
+```bash
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
+
+Verify that `kubectl` works:
+
+```bash
+kubectl get nodes
+```
+
+It should display something like:
+
+```bash
+NAME            STATUS     ROLES           AGE     VERSION
+control-plane   NotReady   control-plane   2m23s   v1.34.2
+```
+
+At this point, the control plane node should be in `NotReady` state because we haven't
+installed a CNI plugin yet.
+
+### Install a CNI plugin
+
+Kubernetes requires a Container Network Interface (CNI) plugin for pod networking.
+For this exercise, I'm using **Flannel**, a simple and popular CNI plugin. Flannel is
+an excellent choice for learning because of its simplicity and ease of setup. While it
+lacks advanced features like network policies, traffic encryption, and deep
+observability (which solutions like [Calico or Cilium provide](https://blog.devops.dev/stop-using-the-wrong-cni-flannel-vs-calico-vs-cilium-in-2025-c11b42ce05a3)),
+its straightforward nature makes it perfect for understanding Kubernetes fundamentals
+without the added complexity of advanced networking features.
+
+```bash
+kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+```
+
+Wait a minute or two, then check the node status again:
+
+```bash
+kubectl get nodes
+```
+
+The control plane node should now be in `Ready` state.
+
+You can also check that the Flannel pods are running:
+
+```bash
+kubectl get pods -n kube-flannel
+```
+
+### Join worker nodes to the cluster
+
+Now that the control plane is ready, SSH into each worker node and run the
+`kubeadm join` command that was printed during the `kubeadm init` step.
+
+On **worker-1**:
+
+```bash
+ssh ro@192.168.122.11
+# or
+ssh ro@worker-1
+
+sudo kubeadm join 192.168.122.10:6443 --token <token> \
+    --discovery-token-ca-cert-hash sha256:<hash>
+```
+
+Repeat for **worker-2** and **worker-3**.
+
+If you didn't save the join command, you can generate a new one from the control plane:
+
+```bash
+# On the control plane
+kubeadm token create --print-join-command
+```
+
+### Verify the cluster
+
+Back on the control plane node, verify that all nodes have joined the cluster:
+
+```bash
+kubectl get nodes
+```
+
+You should see all nodes in `Ready` state:
+
+```
+NAME            STATUS   ROLES           AGE   VERSION
+control-plane   Ready    control-plane   10m   v1.34.0
+worker-1        Ready    <none>          5m    v1.34.0
+worker-2        Ready    <none>          4m    v1.34.0
+worker-3        Ready    <none>          3m    v1.34.0
+```
+
+Check that all system pods are running:
+
+```bash
+kubectl get pods -A
+```
+
+### Test the cluster
+
+Deploy a simple test application to verify the cluster is working:
+
+```bash
+# Create a deployment
+kubectl create deployment nginx --image=nginx
+
+# Expose it as a service
+kubectl expose deployment nginx --port=80 --type=NodePort
+
+# Check the service
+kubectl get svc nginx
+```
+
+Get the NodePort assigned to the service (it will be in the 30000-32767 range), then
+test accessing it from the host machine:
+
+```bash
+# From the host
+curl http://192.168.122.11:<node-port>
+```
+
+You should see the default Nginx welcome page.
+
+Clean up the test deployment:
+
+```bash
+kubectl delete service nginx
+kubectl delete deployment nginx
+```
+
+**Congratulations!** You now have a working Kubernetes cluster created with `kubeadm`.
+
+---
+
+## Next steps
+
+Now that you have a working cluster, you can:
+
+- Install an ingress controller (e.g., NGINX Ingress Controller)
+- Set up persistent storage
+- Deploy applications
+- Practice with Kubernetes concepts like deployments, services, configmaps, secrets, etc.
+- Explore cluster administration tasks
