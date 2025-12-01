@@ -12,11 +12,6 @@ This page covers:
 - [X] Cloning the VMs more efficiently, using `virt-sysprep` (best for automation).
 - [X] Getting started with `kubeadm`.
 
-## Reference documentation
-
-- [Installing kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/).
-- [Creating a cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/).
-
 ## K3s vs kubeadm
 
 **K3s** is a lightweight, batteries-included Kubernetes distribution that comes
@@ -915,6 +910,8 @@ Check that all system pods are running:
 kubectl get pods -A
 ```
 
+---
+
 ### Use kubectl from the host
 
 So far, we've been connecting wit SSH into the control plane node to run `kubectl`
@@ -1052,15 +1049,46 @@ kubectl delete deployment nginx
 
 ---
 
+### Useful links
+
+**Kubeadm:**
+
+- [Installing kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
+- [Creating a cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/)
+
+**Container Runtime:**
+
+- [Container Runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/)
+- [containerd Getting Started](https://github.com/containerd/containerd/blob/main/docs/getting-started.md)
+
+**CNI Plugins:**
+
+- [Flannel](https://github.com/flannel-io/flannel)
+- [Calico](https://docs.tigera.io/calico/latest/getting-started/kubernetes/)
+- [Cilium](https://docs.cilium.io/en/stable/gettingstarted/k8s-install-default/)
+- [Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
+
+**Virtual Machines:**
+
+- [virt-manager](https://virt-manager.org/)
+- [libvirt](https://libvirt.org/)
+- [virt-sysprep man page](https://www.libguestfs.org/virt-sysprep.1.html)
+- [KVM (Kernel Virtual Machine)](https://www.linux-kvm.org/)
+
 ## Next steps
 
 Now that I have a working cluster, I plan to study more advanced scenarios and features:
 
-- Set up persistent storage with [**Longhorn**](https://longhorn.io/) or [**OpenEBS**](https://openebs.io/).
-- Different CNI Plugins ([**Calico**](https://github.com/projectcalico/calico), [**Cilium**](https://github.com/cilium/cilium)), network policies.
-- Install a modern ingress controller:
-  - [**Traefik**](https://doc.traefik.io/traefik/providers/kubernetes-ingress/) - Cloud-native with automatic HTTPS
-  - [**Cilium**](https://docs.cilium.io/en/stable/network/servicemesh/gateway-api/gateway-api/) - eBPF-based with Gateway API support
-  - Or explore [**Gateway API**](https://gateway-api.sigs.k8s.io/) - the modern successor to Ingress
+- Set up persistent storage with [**Longhorn**](https://longhorn.io/) or
+  [**OpenEBS**](https://openebs.io/).
+- Different CNI Plugins ([**Calico**](https://github.com/projectcalico/calico),
+  [**Cilium**](https://github.com/cilium/cilium)), network policies.
+- Install a modern ingress controller, like
+  [**Traefik**](https://doc.traefik.io/traefik/providers/kubernetes-ingress/) (but I
+  already used this with K3s, so maybe I'll skip it),
+  [**Cilium**](https://docs.cilium.io/en/stable/network/servicemesh/gateway-api/gateway-api/),
+  or explore the [**Gateway API**](https://gateway-api.sigs.k8s.io/).
 - Explore cluster administration tasks.
 - [Policies](https://kubernetes.io/docs/concepts/policy/) and RBAC.
+
+In the meantime, I also plan to make more experience with `virt-manager` and `KVM`.
