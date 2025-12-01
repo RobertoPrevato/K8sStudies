@@ -479,11 +479,48 @@ cluster's networking simply won't function properly.
 
 ///
 
+### Backup and reuse the VM template
+
+There are several options to backup and reuse the VM template. For this use case, the
+simplest approach is to copy the whole disk image.
+
+```bash
+sudo cp /var/lib/libvirt/images/ubuntu-server24.04-a.qcow2 ~/vm-templates/k8s-node-template.qcow2
+```
+
+When you need it, copy it back and define a new VM. Or use `virt-clone` directly from
+this disk.
+
+Optionally, clean the VM template:
+
+```bash
+sudo virt-sysprep -d ubuntu-server24.04-a --keep /home/ro/.ssh/
+```
+
+The `keep` option here is proposed to maintain `authorized_keys` configured when
+creating the VM. Because as clipboard doesn't work out of the box, removing
+`authorized_keys` makes things uncomfortable as it is not so easy to copy public
+SSH keys into the VMs using the console in the `virt-manager` GUI.
+
+Another option is to re-add the SSH keys using the following command:
+
+```bash
+# Clean the template
+sudo virt-sysprep -d ubuntu-server24.04-a
+
+# Re-add your SSH public key
+sudo virt-sysprep -d ubuntu-server24.04-a \
+  --ssh-inject ro:file:/home/yourusername/.ssh/id_ed25519.pub
+```
+
+**Important:** change your username accordingly to match your host' username, and the
+public SSH key to match its name (e.g, `id_rsa.pub`, `id_ed25519.pub`, etc.).
+
 ---
 
-## Configuring VMs manually
+## Configuring node VMs manually
 
-This section describes how to configure VMs manually, using the `virt-manager`
+This section describes how to configure node VMs manually, using the `virt-manager`
 graphical user interface and entering each VM using `SSH`. This is useful as a learning
 exercise and to understand each step. However, it's pretty boring and inefficient if
 done too often. If you wish, skip this part and go directly to the section describing
