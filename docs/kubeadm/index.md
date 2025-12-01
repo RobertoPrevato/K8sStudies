@@ -28,28 +28,25 @@ more manual, modular approach where you need to:
 - Configure storage providers
 - Make more infrastructure decisions
 
-**Why practice with kubeadm?**
-
-Both K3s and kubeadm are production-ready, but learning `kubeadm` gives:
-
-- A deeper understanding of Kubernetes components and how they work together
-- Experience with the standard cluster bootstrap process used in traditional enterprise
-  deployments
-- Knowledge applicable to managed Kubernetes services (EKS, AKS, GKE) which follow
-  similar architectural patterns
-- Skills needed for Kubernetes certifications (CKA, CKAD, CKS)
+Both K3s and kubeadm are production-ready, but learning `kubeadm` provides a deeper
+understanding of Kubernetes components and how they work together. It gives you hands-on
+experience with the standard cluster bootstrap process used in traditional enterprise
+deployments. This knowledge is directly applicable to managed Kubernetes services like
+EKS, AKS, and GKE, which follow similar architectural patterns. Additionally, mastering
+`kubeadm` provides the skills needed for Kubernetes certifications such as CKA, CKAD,
+and CKS.
 
 ## Preparing the nodes
 
 To practice with `kubeadm`, you need multiple nodes. One approach would be to work with
 multiple physical computers. For instance, there are many tutorials on the web
-explaining how to create Kubernetes clusters using Raspberry Pis. But for learning and
-potentially also for work, I think it's best to use virtual machines. I think using
-virtual machines allows you to delete and recreate nodes more freely, to focus on the objective
+explaining how to create Kubernetes clusters using Raspberry Pi. But for learning and
+potentially also for work, I think it's best to use virtual machines. Using virtual
+machines allows you to delete and recreate nodes more freely, to focus on the objective
 to study Kubernetes, and it doesn't require dedicating physical space and purchasing
-additional hardware (assuming that you have at least one good development computer). In
-the past I used `Virtual Box` to create virtual machines on Ubuntu, but after reading a
-little on today's options, I decided to use `virt-manager` instead.
+additional hardware (assuming that you have a good development computer). In the past I
+used `Virtual Box` to create virtual machines on Ubuntu, but after reading a little on
+today's options, I decided to use `virt-manager` instead.
 
 For this exercise, I am using a **Lenovo P15 Gen 1** with 12 CPU cores, 32GB of RAM,
 2.6 TB SSD, and running **Ubuntu Desktop 24.04**.
@@ -1049,7 +1046,26 @@ kubectl delete deployment nginx
 
 ---
 
-### Useful links
+## Next steps
+
+Now that I have a working cluster, I plan to study more advanced scenarios and features:
+
+- Set up persistent storage with [**Longhorn**](https://longhorn.io/) or
+  [**OpenEBS**](https://openebs.io/).
+- Different CNI Plugins ([**Calico**](https://github.com/projectcalico/calico),
+  [**Cilium**](https://github.com/cilium/cilium)), network policies.
+- Install a modern ingress controller, like
+  [**Traefik**](https://doc.traefik.io/traefik/providers/kubernetes-ingress/) (but I
+  already used this with K3s, so maybe I'll skip it),
+  [**Cilium**](https://docs.cilium.io/en/stable/network/servicemesh/gateway-api/gateway-api/),
+  or explore the [**Gateway API**](https://gateway-api.sigs.k8s.io/).
+- Explore cluster administration tasks.
+- [Policies](https://kubernetes.io/docs/concepts/policy/) and RBAC.
+
+In the meantime, I also plan to make more experience with `virt-manager` and `KVM`.
+
+
+## Useful links
 
 **Kubeadm:**
 
@@ -1074,21 +1090,3 @@ kubectl delete deployment nginx
 - [libvirt](https://libvirt.org/)
 - [virt-sysprep man page](https://www.libguestfs.org/virt-sysprep.1.html)
 - [KVM (Kernel Virtual Machine)](https://www.linux-kvm.org/)
-
-## Next steps
-
-Now that I have a working cluster, I plan to study more advanced scenarios and features:
-
-- Set up persistent storage with [**Longhorn**](https://longhorn.io/) or
-  [**OpenEBS**](https://openebs.io/).
-- Different CNI Plugins ([**Calico**](https://github.com/projectcalico/calico),
-  [**Cilium**](https://github.com/cilium/cilium)), network policies.
-- Install a modern ingress controller, like
-  [**Traefik**](https://doc.traefik.io/traefik/providers/kubernetes-ingress/) (but I
-  already used this with K3s, so maybe I'll skip it),
-  [**Cilium**](https://docs.cilium.io/en/stable/network/servicemesh/gateway-api/gateway-api/),
-  or explore the [**Gateway API**](https://gateway-api.sigs.k8s.io/).
-- Explore cluster administration tasks.
-- [Policies](https://kubernetes.io/docs/concepts/policy/) and RBAC.
-
-In the meantime, I also plan to make more experience with `virt-manager` and `KVM`.
