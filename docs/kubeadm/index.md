@@ -835,6 +835,45 @@ Check that all system pods are running:
 kubectl get pods -A
 ```
 
+### Use kubectl from the host
+
+So far, we've been connecting wit SSH into the control plane node to run `kubectl`
+commands. While this works, it's more convenient to run `kubectl` directly from the host
+machine. This way, you can manage your cluster without constantly going SSH into the
+control plane.
+
+To use `kubectl` from the host, you need to:
+
+1. Install `kubectl` on the host
+2. Copy the kubeconfig file from the control plane
+
+Install kubectl on the host, if it's not already installed. You can follow the
+instructions in [_Getting Started_](../getting-started.md#installing-kubectl) for
+instructions.
+
+**Copy the kubeconfig from the control plane:**
+
+```bash
+# On the host machine
+mkdir -p $HOME/.kube
+
+# Copy the config from the control plane
+scp ro@192.168.122.10:/home/ro/.kube/config $HOME/.kube/config
+
+# Or if you prefer using the control plane hostname
+scp ro@control-plane:/home/ro/.kube/config $HOME/.kube/config
+```
+
+Verify that `kubectl` works from the host:
+
+```bash
+# On the host machine
+kubectl get nodes
+```
+
+You should see all your cluster nodes. Now you can manage your Kubernetes cluster
+directly from your host machine.
+
 ### Test the cluster
 
 Deploy a simple test application to verify the cluster is working:
@@ -858,7 +897,7 @@ test accessing it from the host machine:
 curl http://192.168.122.11:<node-port>
 ```
 
-You should see the default Nginx welcome page.
+You should see the default NGINX welcome page.
 
 Clean up the test deployment:
 
@@ -873,10 +912,10 @@ kubectl delete deployment nginx
 
 ## Next steps
 
-Now that you have a working cluster, you can:
+Now that you have a working cluster, I am planning to:
 
-- Install an ingress controller (e.g., NGINX Ingress Controller)
-- Set up persistent storage
-- Deploy applications
-- Practice with Kubernetes concepts like deployments, services, configmaps, secrets, etc.
-- Explore cluster administration tasks
+- Install an ingress controller (e.g., NGINX Ingress Controller).
+- Set up persistent storage.
+- Deploy applications.
+- Practice with Kubernetes concepts like deployments, services, configmaps, secrets, etc..
+- Explore cluster administration tasks.
