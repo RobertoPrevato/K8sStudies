@@ -61,6 +61,12 @@ For this exercise, I am using a **Lenovo P15 Gen 1** with 12 CPU cores, 32GB of 
 
 ```bash
 sudo apt install virt-manager
+
+# add the user to necessary groups
+sudo usermod -aG kvm,libvirt $USER
+
+# Activate the libvirt group in the current shell (avoids needing to log out/in)
+newgrp libvirt
 ```
 
 ### Overview
@@ -494,13 +500,38 @@ this disk.
 Optionally, clean the VM template:
 
 ```bash
-sudo virt-sysprep -d ubuntu-server24.04-a --keep /home/ro/.ssh/
+sudo virt-sysprep -d ubuntu-server24.04-a
 ```
 
-The `keep` option here is proposed to maintain `authorized_keys` configured when
-creating the VM. Because as clipboard doesn't work out of the box, removing
-`authorized_keys` makes things uncomfortable as it is not so easy to copy public
-SSH keys into the VMs using the console in the `virt-manager` GUI.
+If you want to clone and keep the `authorized_keys` configured when preparing the
+template, you can use the following approach:
+
+```bash
+VM=worker-4
+TEMPLATE_VM_NAME="ubuntu-server24.04-a"
+
+sudo virt-clone --original $TEMPLATE_VM_NAME \
+    --name $VM \
+    --auto-clone
+
+sudo virt-sysprep -d $VM \
+    --hostname $VM \
+    --operations defaults,-ssh-userdir \
+    --run-command 'ssh-keygen -A' \
+    --run-command 'systemctl enable ssh' \
+    --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
+    --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
+    --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts' \
+    --run-command 'echo "192.168.122.13 worker-3" >> /etc/hosts'
+
+# Get MAC address from the stopped VM
+sudo virsh dumpxml $VM | grep "mac address" | awk -F"'" '{print $2}'
+```
+
+The options above preserve the `authorized_keys` file configured during VM creation.
+Since clipboard functionality doesn't work out of the box in `virt-manager`, removing
+`authorized_keys` creates an inconvenience: it's not easy to copy public SSH keys into
+VMs using the console in the `virt-manager` GUI.
 
 Another option is to re-add the SSH keys using the following command:
 
@@ -657,7 +688,7 @@ sudo reboot
 
 ### Verify Configuration
 
-After rebooting each node:
+After rebooting each node, you can verify the changes by:
 
 ```bash
 # Check hostname
@@ -716,21 +747,33 @@ sudo virt-clone --original ubuntu-server24.04-a \
   --name control-plane \
   --auto-clone
 ```
-4. Customize Each Clone with virt-sysprep
+4. Configure each clone with `virt-sysprep`.
 
 **Control Plane:**
 ```bash
-sudo virt-sysprep -d control-plane \
-  --hostname control-plane \
+VM=control-plane
+
+sudo virt-sysprep -d $VM \
+  --hostname $VM \
+  --operations defaults,-ssh-userdir \
+  --run-command 'ssh-keygen -A' \
+  --run-command 'systemctl enable ssh' \
   --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
   --run-command 'echo "192.168.122.11 worker-1" >> /etc/hosts' \
   --run-command 'echo "192.168.122.12 worker-2" >> /etc/hosts' \
   --run-command 'echo "192.168.122.13 worker-3" >> /etc/hosts'
 ```
 
+/// admonition | Tip.
+    type: tip
+
 Use the script provided in `examples/12-virt-manager/create-nodes-vms.sh`.
 
-And configure IP addresses like described at [_Assign static IPs_](#assign-static-ips).
+///
+
+Finally, configure IP addresses like described at [_Assign static IPs_](#assign-static-ips).
+
+---
 
 ## Creating the cluster
 
@@ -881,25 +924,53 @@ control plane.
 
 To use `kubectl` from the host, you need to:
 
-1. Install `kubectl` on the host
-2. Copy the kubeconfig file from the control plane
-
-Install kubectl on the host, if it's not already installed. You can follow the
-instructions in [_Getting Started_](../getting-started.md#installing-kubectl) for
-instructions.
-
-**Copy the kubeconfig from the control plane:**
+1. Install `kubectl` on the host, if it's not already installed. You can follow the
+  instructions in [_Getting Started_](../getting-started.md#installing-kubectl) for
+  instructions.
+2. Copy and merge the kubeconfig file from the control plane
 
 ```bash
 # On the host machine
 mkdir -p $HOME/.kube
 
-# Copy the config from the control plane
-scp ro@192.168.122.10:/home/ro/.kube/config $HOME/.kube/config
+# Copy the config from the control plane to a temporary location
+scp ro@192.168.122.10:/home/ro/.kube/config /tmp/kubeadm-config
 
-# Or if you prefer using the control plane hostname
-scp ro@control-plane:/home/ro/.kube/config $HOME/.kube/config
+# Merge the new config with your existing config
+# This preserves all your existing cluster contexts (Kind, K3s, etc.)
+KUBECONFIG=$HOME/.kube/config:/tmp/kubeadm-config kubectl config view --flatten > /tmp/merged-config
+mv /tmp/merged-config $HOME/.kube/config
+chmod 600 $HOME/.kube/config
+
+# Clean up
+rm /tmp/kubeadm-config
+
+# Optional: Rename the context to something more descriptive
+# Note: If you already have a context named 'kubeadm-cluster', use a different name
+# or the new cluster config will overwrite the existing one
+kubectl config rename-context kubernetes-admin@kubernetes kubeadm-cluster
+
+# Set the new cluster as the current context
+kubectl config use-context kubeadm-cluster
 ```
+
+/// admonition | Managing multiple clusters
+    type: tip
+
+This approach merges the kubeadm cluster config with your existing kubeconfig, preserving
+all your other cluster contexts (Kind, K3s, etc.). You can switch between clusters using:
+
+```bash
+# List all contexts
+kubectl config get-contexts
+
+# Switch to a different cluster
+kubectl config use-context kind-kind  # or k3s-default, kubeadm-cluster, etc.
+
+# Check current context
+kubectl config current-context
+```
+///
 
 Verify that `kubectl` works from the host:
 
@@ -934,7 +1005,43 @@ test accessing it from the host machine:
 curl http://192.168.122.11:<node-port>
 ```
 
-You should see the default NGINX welcome page.
+You should see the default NGINX welcome page, like in the following example:
+
+```bash {linenums="1" hl_lines="6 8 29"}
+$ kubectl expose deployment nginx --port=80 --type=NodePort
+service/nginx exposed
+
+$ kubectl get svc nginx
+NAME    TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+nginx   NodePort   10.105.69.128   <none>        80:30290/TCP   6s
+
+$ curl http://control-plane:30290
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+
+Good! :tada: :tada: :tada:
 
 Clean up the test deployment:
 
@@ -943,16 +1050,17 @@ kubectl delete service nginx
 kubectl delete deployment nginx
 ```
 
-**Congratulations!** You now have a working Kubernetes cluster created with `kubeadm`.
-
 ---
 
 ## Next steps
 
-Now that you have a working cluster, I am planning to:
+Now that I have a working cluster, I plan to study more advanced scenarios and features:
 
-- Install an ingress controller (e.g., NGINX Ingress Controller).
-- Set up persistent storage.
-- Deploy applications.
-- Practice with Kubernetes concepts like deployments, services, configmaps, secrets, etc..
+- Set up persistent storage with [**Longhorn**](https://longhorn.io/) or [**OpenEBS**](https://openebs.io/).
+- Different CNI Plugins ([**Calico**](https://github.com/projectcalico/calico), [**Cilium**](https://github.com/cilium/cilium)), network policies.
+- Install a modern ingress controller:
+  - [**Traefik**](https://doc.traefik.io/traefik/providers/kubernetes-ingress/) - Cloud-native with automatic HTTPS
+  - [**Cilium**](https://docs.cilium.io/en/stable/network/servicemesh/gateway-api/gateway-api/) - eBPF-based with Gateway API support
+  - Or explore [**Gateway API**](https://gateway-api.sigs.k8s.io/) - the modern successor to Ingress
 - Explore cluster administration tasks.
+- [Policies](https://kubernetes.io/docs/concepts/policy/) and RBAC.

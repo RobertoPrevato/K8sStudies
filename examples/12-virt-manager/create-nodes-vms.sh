@@ -20,7 +20,7 @@ for VM in control-plane worker-1 worker-2 worker-3; do
 
   sudo virt-sysprep -d $VM \
     --hostname $VM \
-    --keep /home/ro/.ssh/authorized_keys \
+    --operations defaults,-ssh-userdir \
     --run-command 'ssh-keygen -A' \
     --run-command 'systemctl enable ssh' \
     --run-command 'echo "192.168.122.10 control-plane" >> /etc/hosts' \
