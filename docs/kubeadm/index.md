@@ -4,6 +4,8 @@ Kubernetes cluster that conforms to best practices. In this page I describe how 
 install `virt-manager` on a host running Ubuntu 24.04 and how to create a group of
 virtual machines as a foundation to start studying `kubeadm`.
 
+This page covers:
+
 - [X] Using `virt-manager` to create virtual machines in Linux using KVM.
 - [X] Creating nodes for Kubernetes using `virt-manager`.
 - [X] Cloning and configuring VMs manually, to understand each step.
@@ -46,13 +48,13 @@ Both K3s and kubeadm are production-ready, but learning `kubeadm` gives:
 
 To practice with `kubeadm`, you need multiple nodes. One approach would be to work with
 multiple physical computers. For instance, there are many tutorials on the web
-explaining how to create Kubernetes clusters using Raspberry Pis. But for learning, I
-think it's best using virtual machines. Using virtual machines allows you to delete and
-recreate nodes more freely, to focus on the objective to study Kubernetes, and it
-doesn't require dedicating physical space and purchasing additional hardware (assuming
-that you have at least one good development computer). In the past I used `Virtual Box`
-to create virtual machines on Ubuntu, but after reading a little on today's options, I
-decided to use `virt-manager` instead.
+explaining how to create Kubernetes clusters using Raspberry Pis. But for learning and
+potentially also for work, I think it's best to use virtual machines. I think using
+virtual machines allows you to delete and recreate nodes more freely, to focus on the objective
+to study Kubernetes, and it doesn't require dedicating physical space and purchasing
+additional hardware (assuming that you have at least one good development computer). In
+the past I used `Virtual Box` to create virtual machines on Ubuntu, but after reading a
+little on today's options, I decided to use `virt-manager` instead.
 
 For this exercise, I am using a **Lenovo P15 Gen 1** with 12 CPU cores, 32GB of RAM,
 2.6 TB SSD, and running **Ubuntu Desktop 24.04**.
@@ -66,13 +68,14 @@ sudo apt install virt-manager
 This is an overview of what I want to achieve:
 
 1. Installing `virt-manager` on the host.
-2. Preparing virtual machines on the host, to have the nodes for Kubernetes.
-3. Installing the necessary tools on the nodes, and creating the cluster using `kubeadm`.
+2. Preparing a virtual machine template for Kubernetes, with all necessary tools.
+3. Creating virtual machines on the host, to have the nodes for Kubernetes.
+4. Creating the cluster using `kubeadm` (control plane and worker nodes).
 
 To use kubeadm to install a Kubernetes controller on a VM, you first need to install
-kubeadm, kubelet, and kubectl, along with a container runtime, on the VM. Then, run
-kubeadm init on that VM to initialize the control plane, and install a CNI plugin for
-pod networking. Then join worker nodes.
+**kubeadm**, **kubelet**, and **kubectl**, along with a container runtime, on the VM.
+Then, run kubeadm init on that VM to initialize the control plane, and install a **CNI
+plugin** for pod networking. Then **join worker nodes**.
 
 The following diagram provides more details.
 
@@ -94,9 +97,7 @@ flowchart TD
     N2 --> W1[Update hostname:<br/>**worker-1**]
     N3 --> W2[Update hostname:<br/>**worker-2**]
 
-    W2 --> W3[Set static IPs]
-
-    CP1 --> CP2[Start all VMs]
+    CP1 --> CP2[Set static IPs;<br/>Start all VMs]
     W1 --> CP2
     W2 --> CP2
 
@@ -148,10 +149,9 @@ After installing Ubuntu Server, navigate to the VM details, select the CD ROM de
 remove the installation medium clicking on the icon to clear the source path and click
 the 'Apply' button.
 
-During the installation of Ubuntu Server, I enabled OpenSSH. It is possible to import public keys for SSH
-authentication from two sources, including GitHub. Otherwise, configure `authorized_keys`
-using the CLI once the machine is ready. This will make installing tools easier, as we
-can SSH from the host into the virtual machine.
+During the installation of Ubuntu Server, I enabled OpenSSH. It is possible to import
+public keys for SSH authentication from two sources, including GitHub. This will make
+installing tools easier, as we can SSH from the host into the virtual machine.
 
 ### Virtual Networks
 
@@ -176,7 +176,7 @@ hostname -I
 ```
 
 ```bash
-# from the host…
+# from the host… ssh username@ip
 ssh ro@192.168.122.116
 ```
 
@@ -294,6 +294,190 @@ sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables ne
 ```
 
 All three values should return `1`.
+
+/// details | IP Forwarding and networking.
+    type: example
+
+**IP forwarding** (also called IP routing) allows a Linux machine to act as a router,
+forwarding network packets between different network interfaces or networks.
+
+In Kubernetes it is required for:
+
+**Pod-to-Pod Communication Across Nodes**
+
+- When a pod on `worker-1` (e.g., IP `10.244.1.5`) wants to talk to a pod on `worker-2`
+  (e.g., IP `10.244.2.10`), the packet must be forwarded through the network stack
+- Without IP forwarding enabled, the node would receive the packet but refuse to forward
+  it to the destination network
+- With IP forwarding enabled, the node can route the packet from one network interface
+  to another
+
+**Routing Between Pod Network and Host Network**
+
+- Pods live in their own network namespace (e.g., `10.244.0.0/16` CIDR)
+- The host lives in a different network (e.g., `192.168.122.0/24`)
+- IP forwarding allows packets to flow between these different networks
+
+**How It Works in Practice**
+
+```
+Pod A (10.244.1.5)        Pod B (10.244.2.10)
+on worker-1               on worker-2
+    ↓                         ↓
+[veth pair]              [veth pair]
+    ↓                         ↓
+[cni0 bridge]            [cni0 bridge]
+10.244.1.1               10.244.2.1
+    ↓                         ↓
+[worker-1 eth0]    →    [worker-2 eth0]
+192.168.122.11          192.168.122.12
+```
+
+A **veth pair** (Virtual Ethernet pair) is a fundamental Linux networking construct used
+in containerization. A **veth pair** is like a virtual ethernet cable with two ends.
+Think of it as a pipe:
+
+- Data sent into one end comes out the other end
+- It connects two different network namespaces
+- It's created as a pair: veth0 ↔ veth1
+
+In Kubernetes, every pod gets its own network namespace (isolated network stack). To
+connect the pod to the node's network, Kubernetes creates a veth pair:
+
+```
+┌─────────────────────────────────────┐
+│         Pod Network Namespace       │
+│                                     │
+│  [Pod eth0] ← veth pair end 1       │
+└─────────────────────────────────────┘
+              ↕ (veth pair)
+┌─────────────────────────────────────┐
+│      Host/Node Network Namespace    │
+│                                     │
+│  veth pair end 2 → [cni0 bridge]    │
+└─────────────────────────────────────┘
+```
+
+When a pod starts:
+
+1. **Kubernetes creates a veth pair:** `veth0` and `vethXXXXX` (random name).
+1. **One end goes into the pod:** Shows up as `eth0` inside the pod.
+1. **Other end stays on the host:** Connected to the CNI bridge (like `cni0`).
+1. **Traffic flows through the pair:** Pod sends packets → they appear on the bridge → get routed.
+
+You can see veth interfaces on your nodes:
+
+```bash
+# On a worker node
+ip link show | grep veth
+# Output example:
+# 5: veth1a2b3c4d@if4: <BROADCAST,MULTICAST,UP,LOWER_UP>
+# 7: veth5e6f7g8h@if6: <BROADCAST,MULTICAST,UP,LOWER_UP>
+```
+
+Each `veth` interface corresponds to a running pod.
+
+**What is the cni0 bridge?**
+
+The **cni0 bridge** is a Linux bridge device created by the CNI plugin (like Flannel)
+that acts as a virtual switch on each node. Think of it like a network switch that
+connects all the pods on a single node together.
+
+Key characteristics:
+
+- **One bridge per node**: Each worker node has its own `cni0` bridge
+- **Connects all local pods**: All veth pairs from pods on the same node connect to this bridge
+- **Has its own IP**: The bridge gets an IP address from the pod CIDR (e.g., `10.244.1.1`)
+- **Layer 2 device**: Works like a physical network switch, forwarding ethernet frames between connected interfaces
+
+You can see the bridge on any node:
+
+```bash
+# On a worker node
+ip addr show cni0
+# Output example:
+# 4: cni0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default qlen 1000
+#     link/ether 8a:4c:e8:34:12:6f brd ff:ff:ff:ff:ff:ff
+#     inet 10.244.1.1/24 brd 10.244.1.255 scope global cni0
+#        valid_lft forever preferred_lft forever
+```
+
+How it works:
+
+```
+Pod 1 (10.244.1.5)     Pod 2 (10.244.1.6)     Pod 3 (10.244.1.7)
+     ↓                      ↓                      ↓
+[veth1a2b3c4d]        [veth5e6f7g8h]        [veth9i0j1k2l]
+     ↓                      ↓                      ↓
+     └──────────────────────┴──────────────────────┘
+                            ↓
+                    [cni0 bridge: 10.244.1.1]
+                            ↓
+                    [node eth0: 192.168.122.11]
+```
+
+When Pod 1 wants to communicate with Pod 2 (same node):
+
+- Packet goes through Pod 1's `veth pair` to the bridge
+- Bridge forwards directly to Pod 2's `veth pair` (local switching)
+- No need to leave the node!
+
+When Pod 1 wants to communicate with a pod on another node:
+
+- Packet goes through Pod 1's `veth pair` to the bridge
+- Bridge forwards to the node's physical interface (eth0)
+- Requires IP forwarding to route between bridge and eth0
+- Packet travels across the network to the other node
+
+---
+
+When Pod A sends a packet to Pod B:
+
+- Packet goes from Pod A's network namespace to the bridge on worker-1 (through `veth pair`)
+- Linux kernel checks: "Should I forward this packet?"
+- If `net.ipv4.ip_forward = 0`: **DROP** ❌
+- If `net.ipv4.ip_forward = 1`: **FORWARD** ✅
+- Packet is routed to worker-2's physical interface
+- Worker-2 forwards it to its bridge, then to Pod B
+
+**Services and Load Balancing**
+
+- When you access a Kubernetes Service, kube-proxy sets up iptables/ipvs rules
+- These rules rewrite packet destinations to forward traffic to the correct pod
+- IP forwarding must be enabled for these iptables rules to work
+
+**Without IP Forwarding:**
+
+- Pods could only communicate with other pods on the **same node**
+- Cross-node pod communication would fail
+- Services wouldn't work properly
+- External traffic couldn't reach pods
+
+The other settings included are related:
+
+- `net.bridge.bridge-nf-call-iptables = 1` - Allows iptables rules to process traffic
+  crossing Linux bridges (the CNI uses bridges)
+- `net.bridge.bridge-nf-call-ip6tables = 1` - Same for IPv6
+
+These ensure that pod traffic going through bridges is also subject to iptables rules
+(which Kubernetes uses for Services, NetworkPolicies, etc.).
+
+Example:
+
+```bash
+# Without IP forwarding
+curl http://10.244.2.10  # From worker-1 to pod on worker-2
+# Result: Connection timeout or "Network unreachable"
+
+# With IP forwarding enabled
+curl http://10.244.2.10  # From worker-1 to pod on worker-2
+# Result: Success! Packet is routed correctly
+```
+
+This is why `kubeadm` checks for IP forwarding during preflight checks—without it, the
+cluster's networking simply won't function properly.
+
+///
 
 ---
 
