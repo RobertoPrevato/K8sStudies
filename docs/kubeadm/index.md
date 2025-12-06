@@ -1050,6 +1050,8 @@ kubectl delete deployment nginx
 
 Now that I have a working cluster, I plan to study more advanced scenarios and features:
 
+- Configuring an **Ingress Controller** and a **Load Balancer Solution** for [_external access_](./external-access.md).
+- Practicing with [**Ansible**](./ansible.md) for nodes administration.
 - Set up persistent storage with [**Longhorn**](https://longhorn.io/) or
   [**OpenEBS**](https://openebs.io/).
 - Different CNI Plugins ([**Calico**](https://github.com/projectcalico/calico),

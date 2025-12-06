@@ -1,0 +1,41 @@
+---
+- name: Install Longhorn Prerequisites
+  hosts: k8s_cluster
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install open-iscsi
+      apt:
+        name: open-iscsi
+        state: present
+
+    - name: Enable and start iscsid service
+      systemd:
+        name: iscsid
+        enabled: yes
+        state: started
+
+    - name: Verify iscsid is running
+      systemd:
+        name: iscsid
+        state: started
+      register: iscsid_status
+
+    - name: Install nfs-common
+      apt:
+        name: nfs-common
+        state: present
+
+    - name: Check available disk space
+      shell: df -h | grep -E '/$|/var'
+      register: disk_space
+      changed_when: false
+
+    - name: Display disk space
+      debug:
+        msg: "{{ disk_space.stdout_lines }}"
+
