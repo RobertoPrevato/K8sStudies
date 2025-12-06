@@ -234,6 +234,131 @@ kubectl apply -f <new-config.yaml>
 
 - **Persistence**: MetalLB configurations persist across cluster restarts
 
+## Choosing an Ingress Controller
+
+A few months ago, having to move the first steps learning about ingress in Kubernetes, I would have studied the NGINX Ingress.
+But given the recent news of the [Ingress NGINX Retirement](https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/), whose maintenance will end in March 2026, I looked for other alternatives to study.
+
+The Kubernetes community is recommending migrating to the **Gateway API**, which is the
+official replacement for **Ingress**.
+
+These are the recommendations from GitHub Copilot:
+
+**Option 1: Gateway API with Envoy Gateway (Future-proof learning):**
+
+```bash
+# Install Gateway API CRDs
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/standard-install.yaml
+
+# Install Envoy Gateway
+helm install eg oci://docker.io/envoyproxy/gateway-helm \
+  --version v1.3.0 \
+  -n envoy-gateway-system \
+  --create-namespace
+```
+
+**Option 2: Cilium (Comprehensive modern stack):**
+
+Since you're already using Calico/Flannel, you could replace it with Cilium for a
+complete modern solution.
+
+**Option 3: Keep it simple with Traefik (still supports Ingress + Gateway API):**
+
+```bash
+helm repo add traefik https://traefik.github.io/charts
+helm repo update
+
+helm install traefik traefik/traefik \
+  --namespace traefik-system \
+  --create-namespace \
+  --set gatewayAPI.enabled=true
+```
+
+Traefik supports both old Ingress API and new Gateway API, making it a good transition
+option.
+
+
+### Learning Path Recommendation
+
+For your **kubeadm** cluster learning journey:
+
+**Start with Traefik (easiest transition)**
+
+- Works with MetalLB immediately
+- Supports both Ingress and Gateway API
+- Good documentation for learners
+- Active maintenance
+- Learn Gateway API concepts using Traefik
+
+**Learn Gateway API concepts using Traefik**
+
+- Understand the modern approach
+- Future-proof your knowledge
+
+**Consider Cilium later** if you want to dive deeper into modern networking
+
+---
+
+I decided to follow the advice, and start with **Traefik** even though I already used that
+with **K3s**.
+
+When installing Traefik using the command above, a single pod is created.
+A single instance is sufficient for a learning and non-production environments, as a
+single Traefik pod can handle significant traffic - easily thousands of requests per
+second depending on the hardware.
+
+Multiple replicas can be needed for:
+
+- **High availability** because otherwise if the node running Traefik fails, the ingress
+  goes down.
+- **High Traffic** as the load is distributed across multiple pods
+- **Production environments** - eliminate single point of failure at cluster level
+
+When needed, Traefik can be scaled using the following command:
+
+```bash
+# Upgrade to run 3 replicas
+helm upgrade traefik traefik/traefik \
+  --namespace traefik-system \
+  --set deployment.replicas=3 \
+  --set gatewayAPI.enabled=true \
+  --reuse-values
+
+# Verify multiple pods
+kubectl get pods -n traefik-system
+```
+
+**With multiple replicas:**
+
+- MetalLB will assign one external IP.
+- All Traefik pods share that IP.
+- Traffic is distributed across pods.
+- If one pod fails, others continue serving traffic.
+
+### How Traefik works with MetalLB
+
+When you expose Traefik as a LoadBalancer service:
+
+```bash
+kubectl get svc -n traefik-system
+```
+
+You'll see something like:
+
+```bash
+NAME      TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)                      AGE
+traefik   LoadBalancer   10.103.199.179   192.168.122.52   80:30443/TCP,443:31075/TCP   7m
+```
+
+**Single replica:** One pod handles all traffic via that external IP.
+
+**Multiple replicas:** MetalLB still assigns one IP, but Kubernetes load balances traffic
+across all pods.
+
+I will scale to 2-3 replicas later when I will want to learn about high availability
+concepts, test pod failure scenarios, and practice with anti-affinity rules (spreading
+pods across nodes).
+
 ## Next steps
 
 Practice with [**Ansible**](./ansible.md) and with [**Longhorn**](./longhorn.md).

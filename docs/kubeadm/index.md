@@ -125,7 +125,7 @@ For now, I assign:
 
 - **CPU**: 2 cores
 - **RAM**: 4 GB
-- **Disk**: 20 GB
+- **Disk**: 100 GB
 
 ![virt-manager 01](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/cea31b01e02e2e6f015aa33abf2f10a112fe0639/virt-manager-01.png)
 

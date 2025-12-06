@@ -169,6 +169,27 @@ ansible-playbook -i inventory.ini longhorn-prerequisites.yaml -K
 
 ## Installing Longhorn
 
+/// tab | Using Helm.
+
+```bash
+# Add Longhorn Helm repository
+helm repo add longhorn https://charts.longhorn.io
+helm repo update
+
+# Install Longhorn
+helm install longhorn longhorn/longhorn \
+  --namespace longhorn-system \
+  --create-namespace \
+  --version 1.9.2 \
+  --set service.ui.type=LoadBalancer \
+  --set defaultSettings.defaultReplicaCount=1
+
+# Check the installation
+kubectl get pods -n longhorn-system
+```
+
+///
+
 /// tab | Using kubectl.
 
 ```bash
@@ -179,22 +200,6 @@ kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.9.2/depl
 kubectl get pods -n longhorn-system --watch
 
 # All pods should eventually be in Running state
-```
-
-///
-
-/// tab | Using Helm.
-
-```bash
-# Add Longhorn Helm repository
-helm repo add longhorn https://charts.longhorn.io
-helm repo update
-
-# Install Longhorn
-helm install longhorn longhorn/longhorn --namespace longhorn-system --create-namespace --version 1.9.2
-
-# Check the installation
-kubectl get pods -n longhorn-system
 ```
 
 ///
