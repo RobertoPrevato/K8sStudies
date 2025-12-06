@@ -181,7 +181,6 @@ helm install longhorn longhorn/longhorn \
   --namespace longhorn-system \
   --create-namespace \
   --version 1.9.2 \
-  --set service.ui.type=LoadBalancer \
   --set defaultSettings.defaultReplicaCount=1
 
 # Check the installation
@@ -218,6 +217,36 @@ kubectl get svc -n longhorn-system longhorn-ui-nodeport
 # Access via: http://<node-ip>:<nodeport>
 # For example: http://192.168.122.11:31234
 ```
+
+Or, for a permanent solution, configure an ingress:
+
+```bash
+# Apply the ingress configuration
+kubectl apply -f longhorn-ingress.yaml
+
+# Verify ingress
+kubectl get ingress -n longhorn-system
+```
+
+Obtain the IP address of the ingress controller:
+
+```bash
+kubectl get svc -n traefik-system
+
+NAME      TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)                      AGE
+traefik   LoadBalancer   10.103.199.179   192.168.122.52   80:30443/TCP,443:31075/TCP   47m
+```
+
+Update the hosts file this way:
+
+```bash
+# common ingress for web traffic
+192.168.122.52 longhorn.local
+```
+
+Navigate with a browser to `http://longhorn.local`.
+
+![Longhorn UI](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/420727d6dbadc0c5dbf9f14985ec166b7d5c8c4b/longhorn-ui-01.png).
 
 ## Practice Exercise
 
