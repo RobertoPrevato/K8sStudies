@@ -6,7 +6,7 @@ An **Ingress Controller** (for HTTP/HTTPS routing).
 - Routes external HTTP/HTTPS traffic to services.
 - Provides host/path-based routing.
 - Handles TLS termination.
-- Options: ~~NGINX Ingress~~, Traefik, Cilium, HAProxy.
+- Options: NGINX Ingress, Traefik, Cilium, HAProxy.
 
 A **Load Balancer Solution** (for **LoadBalancer** services)
 

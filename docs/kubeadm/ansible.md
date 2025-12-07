@@ -114,4 +114,4 @@ alongside your project, enabling collaboration and change tracking.
 
 ## Next steps
 
-Practice with distributed object stores and backups using [Longhorn](./longhorn.md).
+Practice with [distributed object stores and backups](./distributed-storage.md).

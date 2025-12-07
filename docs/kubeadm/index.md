@@ -1,4 +1,4 @@
-After exploring [K3s](../k3s/index.md) and [Kind](../kind/index.md) in previous exercises,
+After exploring [Kind](../kind/creating-a-cluster.md) and [K3s](../k3s/index.md) in previous exercises,
 I want to practice with **`kubeadm`**. Using [**`kubeadm`**](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/), you can create a minimum viable
 Kubernetes cluster that conforms to best practices. In this page I describe how to
 install `virt-manager` on a host running Ubuntu 24.04 and how to create a group of
