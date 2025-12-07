@@ -1066,7 +1066,6 @@ Now that I have a working cluster, I plan to study more advanced scenarios and f
 
 In the meantime, I also plan to make more experience with `virt-manager` and `KVM`.
 
-
 ## Useful links
 
 **Kubeadm:**

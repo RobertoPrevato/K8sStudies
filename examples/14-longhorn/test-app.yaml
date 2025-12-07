@@ -34,3 +34,31 @@ spec:
       - name: longhorn-vol
         persistentVolumeClaim:
           claimName: longhorn-test-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: volume-test
+spec:
+  selector:
+    app: volume-test
+  ports:
+  - port: 80
+    targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: volume-test
+spec:
+  rules:
+  - host: volume-test.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: volume-test
+            port:
+              number: 80
