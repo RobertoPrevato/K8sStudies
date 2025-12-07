@@ -1,4 +1,4 @@
-After exploring [K3s](../k3s/index.md) and [Kind](../kind/index.md) in previous exercises,
+After exploring [Kind](../kind/creating-a-cluster.md) and [K3s](../k3s/index.md) in previous exercises,
 I want to practice with **`kubeadm`**. Using [**`kubeadm`**](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/), you can create a minimum viable
 Kubernetes cluster that conforms to best practices. In this page I describe how to
 install `virt-manager` on a host running Ubuntu 24.04 and how to create a group of
@@ -125,7 +125,7 @@ For now, I assign:
 
 - **CPU**: 2 cores
 - **RAM**: 4 GB
-- **Disk**: 20 GB
+- **Disk**: 100 GB
 
 ![virt-manager 01](https://gist.githubusercontent.com/RobertoPrevato/38a0598b515a2f7257c614938843b99b/raw/cea31b01e02e2e6f015aa33abf2f10a112fe0639/virt-manager-01.png)
 
@@ -1050,6 +1050,8 @@ kubectl delete deployment nginx
 
 Now that I have a working cluster, I plan to study more advanced scenarios and features:
 
+- Configuring an **Ingress Controller** and a **Load Balancer Solution** for [_external access_](./external-access.md).
+- Practicing with [**Ansible**](./ansible.md) for nodes administration.
 - Set up persistent storage with [**Longhorn**](https://longhorn.io/) or
   [**OpenEBS**](https://openebs.io/).
 - Different CNI Plugins ([**Calico**](https://github.com/projectcalico/calico),
@@ -1063,7 +1065,6 @@ Now that I have a working cluster, I plan to study more advanced scenarios and f
 - [Policies](https://kubernetes.io/docs/concepts/policy/) and RBAC.
 
 In the meantime, I also plan to make more experience with `virt-manager` and `KVM`.
-
 
 ## Useful links
 

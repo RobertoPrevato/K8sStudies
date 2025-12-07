@@ -25,6 +25,9 @@ nav:
       - CloudNativePG: k3s/cloudnativepg.md
   - kubeadm:
       - Introduction: kubeadm/index.md
+      - External Access: kubeadm/external-access.md
+      - Ansible: kubeadm/ansible.md
+      - Distributed Storage: kubeadm/distributed-storage.md
   - Diving deeper:
       - A bit of Docker history: diving-deeper/docker-history.md
   - CHANGELOG: changelog.md
@@ -86,7 +89,7 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tasklist:
       custom_checkbox: true
-  - pymdownx.tabbed:
+  - pymdownx.blocks.tab:
       alternate_style: true
   - toc:
       permalink: true

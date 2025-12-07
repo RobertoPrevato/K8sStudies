@@ -1,0 +1,364 @@
+Now that I created a cluster using `kubeadm`, it lacks two components for a complete
+solution supporting external access:
+
+An **Ingress Controller** (for HTTP/HTTPS routing).
+
+- Routes external HTTP/HTTPS traffic to services.
+- Provides host/path-based routing.
+- Handles TLS termination.
+- Options: NGINX Ingress, Traefik, Cilium, HAProxy.
+
+A **Load Balancer Solution** (for **LoadBalancer** services)
+
+- Provides external IPs for type: **LoadBalancer** services.
+- Required because kubeadm clusters don't have a cloud provider.
+- Options: **MetalLB** (most popular for bare metal), **kube-vip**, **Cilium**.
+
+---
+
+**MetalLB**, **Kube-VIP**, and **Cilium** offer different approaches to providing bare-metal
+Kubernetes services, with MetalLB focusing purely on LoadBalancer Services via L2/BGP
+and Kube-VIP excels at HA Control Plane & Services with simpler deployment, while Cilium
+integrates load balancing into its CNI. Choose MetalLB for robust, feature-rich service
+load balancing; Kube-VIP for simplicity, HA Control Plane needs, or combined use; and
+Cilium for deep CNI integration.
+
+## MetalLB
+
+- **Best For:** Dedicated, feature-rich LoadBalancer Services on bare-metal.
+- **How it Works:** Uses Layer 2 (ARP/NDP) or BGP to announce IPs for LoadBalancer
+  services from a pool.
+- **Pros:** Popular, robust, rich features (IPv6, dual-stack), mature, good for diverse
+  bare-metal setups.
+- **Cons:** Can be more complex to manage than Kube-VIP for basic needs.
+
+## Kube-VIP
+
+- **Best For:** HA Control Plane (VIP for masters) and simpler Service Load Balancing,
+  especially in edge/small clusters.
+- **How it Works:** Uses VRRP (like Keepalived) for Control Plane HA and can also handle
+  services, binding IPs directly to the interface.
+- **Pros:** Lightweight, simple, great for HA Control Plane, multi-arch (ARM, x86).
+- **Cons:** Service load balancing can be less feature-rich than MetalLB; can conflict
+  if both run for services.
+
+## Cilium (as an alternative)
+
+- **Best For:** When you need integrated networking (CNI, Service Mesh, Load Balancing).
+- **How it Works:** Centralizes IPAM, BGP, and LB within the Cilium data plane.
+- **Pros:** Unified observability, lower latency, simplified operations within a single
+  CNI.
+
+## Which to Choose?
+
+- **If you need just LoadBalancer Services:** MetalLB is generally the go-to for its
+  maturity and features.
+- **If you need HA Control Plane & Services:** Kube-VIP for CP, MetalLB for Services (often
+  run together).
+- **For Simplicity/Edge:** Kube-VIP offers a very lightweight path.
+- **For integrated CNI/LB:** Consider Cilium.
+
+**MetalLB** is the established standard for bare-metal LoadBalancer Services;
+**Kube-VIP** is excellent for HA Control Plane VIPs and simpler service needs.
+
+---
+
+## Installing MetalLB
+
+MetalLB provides a network load balancer implementation for bare-metal Kubernetes
+clusters. It allows you to create Kubernetes services of type `LoadBalancer` in
+environments that don't have native support for load balancers (like cloud providers
+do).
+
+### Prerequisites
+
+- A running kubeadm cluster with nodes having connectivity to each other
+- IP address range available for MetalLB to use (should not conflict with existing network ranges)
+
+### Installation Steps
+
+**1. Install MetalLB using the manifest:**
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/manifests/metallb-native.yaml
+```
+
+This creates the `metallb-system` namespace and deploys the MetalLB controller and
+speaker components.
+
+**2. Verify the installation:**
+
+```bash
+# Check that the pods are running
+kubectl get pods -n metallb-system
+
+# You should see output similar to:
+# NAME                          READY   STATUS    RESTARTS   AGE
+# controller-xxxxxxxx-xxxxx     1/1     Running   0          30s
+# speaker-xxxxx                 1/1     Running   0          30s
+# speaker-xxxxx                 1/1     Running   0          30s
+# speaker-xxxxx                 1/1     Running   0          30s
+```
+
+Wait until all pods are in `Running` state before proceeding.
+
+**3. Configure MetalLB with an IP address pool:**
+
+MetalLB needs to know which IP addresses it can allocate. For your KVM cluster using the
+`192.168.122.0/24` network, you should choose a range that:
+
+- Is within your virtual network subnet
+- Doesn't conflict with existing static IPs (control-plane: .10, workers: .11-.13)
+- Isn't used by the DHCP server
+
+For a learning/development environment, allocate a generous range like
+`192.168.122.50-192.168.122.200`, which provides 151 IP addresses. This gives you plenty
+of room to experiment with multiple LoadBalancer services without running out of IPs.
+
+For production or more constrained environments, you might use a smaller range, but for
+learning purposes, it's better to have more IPs available than you think you'll need.
+
+Create a configuration file:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.122.50-192.168.122.200
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: default
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - default-pool
+EOF
+```
+
+**Explanation:**
+
+- **IPAddressPool**: Defines the range of IP addresses MetalLB can assign to
+  LoadBalancer services
+- **L2Advertisement**: Configures MetalLB to use Layer 2 mode (ARP/NDP) to announce the
+  IPs on your local network
+
+**4. Verify the configuration:**
+
+```bash
+# Check the IP address pool
+kubectl get ipaddresspool -n metallb-system
+
+# Check the L2 advertisement
+kubectl get l2advertisement -n metallb-system
+```
+
+### Testing MetalLB
+
+Deploy a test service to verify MetalLB is working:
+
+```bash
+# Create a simple nginx deployment
+kubectl create deployment nginx-test --image=nginx
+
+# Expose it as a LoadBalancer service
+kubectl expose deployment nginx-test --port=80 --type=LoadBalancer
+
+# Check the service - it should get an EXTERNAL-IP from the MetalLB pool
+kubectl get svc nginx-test
+
+# Example output:
+# NAME         TYPE           CLUSTER-IP      EXTERNAL-IP       PORT(S)        AGE
+# nginx-test   LoadBalancer   10.96.123.45    192.168.122.50    80:31234/TCP   10s
+```
+
+Test accessing the service from your host machine, using the external IP obtained with
+the command above. You should see the NGINX welcome page.
+
+Clean up the test:
+
+```bash
+kubectl delete service nginx-test
+kubectl delete deployment nginx-test
+```
+
+### Layer 2 Mode vs BGP Mode
+
+MetalLB supports two modes:
+
+**Layer 2 Mode (what we configured):**
+- Simpler to set up, no router configuration needed
+- Uses ARP/NDP to announce IPs
+- One node responds to ARP requests for the service IP
+- If that node fails, another node takes over (automatic failover)
+- Good for simple networks and learning environments
+
+**BGP Mode:**
+- Requires BGP-capable routers
+- Provides true load balancing across multiple nodes
+- Better for production environments with proper network infrastructure
+- More complex to configure
+
+For your KVM-based learning cluster, Layer 2 mode is the recommended choice.
+
+### Adjusting the IP Range
+
+If you need to modify the IP address pool later:
+
+```bash
+# Edit the IPAddressPool
+kubectl edit ipaddresspool default-pool -n metallb-system
+
+# Or delete and recreate with a new range
+kubectl delete ipaddresspool default-pool -n metallb-system
+kubectl apply -f <new-config.yaml>
+```
+
+### Important Notes
+
+- **IP Address Conflicts**: Ensure the MetalLB IP range doesn't overlap with:
+  - Node static IPs (192.168.122.10-13 in your setup)
+  - DHCP pool (check your virtual network configuration)
+  - Any other services on the network
+
+- **Network Accessibility**: The assigned IPs are accessible from:
+  - The host machine
+  - All cluster nodes
+  - Any machine on the same virtual network
+
+- **Persistence**: MetalLB configurations persist across cluster restarts
+
+## Choosing an Ingress Controller
+
+A few months ago, having to move the first steps learning about ingress in Kubernetes, I would have studied the NGINX Ingress.
+But given the recent news of the [Ingress NGINX Retirement](https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/), whose maintenance will end in March 2026, I looked for other alternatives to study.
+
+The Kubernetes community is recommending migrating to the **Gateway API**, which is the
+official replacement for **Ingress**.
+
+These are the recommendations from GitHub Copilot:
+
+**Option 1: Gateway API with Envoy Gateway (Future-proof learning):**
+
+```bash
+# Install Gateway API CRDs
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/standard-install.yaml
+
+# Install Envoy Gateway
+helm install eg oci://docker.io/envoyproxy/gateway-helm \
+  --version v1.3.0 \
+  -n envoy-gateway-system \
+  --create-namespace
+```
+
+**Option 2: Cilium (Comprehensive modern stack):**
+
+Since you're already using Calico/Flannel, you could replace it with Cilium for a
+complete modern solution.
+
+**Option 3: Keep it simple with Traefik (still supports Ingress + Gateway API):**
+
+```bash
+helm repo add traefik https://traefik.github.io/charts
+helm repo update
+
+helm install traefik traefik/traefik \
+  --namespace traefik-system \
+  --create-namespace \
+  --set gatewayAPI.enabled=true
+```
+
+Traefik supports both old Ingress API and new Gateway API, making it a good transition
+option.
+
+
+### Learning Path Recommendation
+
+For your **kubeadm** cluster learning journey:
+
+**Start with Traefik (easiest transition)**
+
+- Works with MetalLB immediately
+- Supports both Ingress and Gateway API
+- Good documentation for learners
+- Active maintenance
+- Learn Gateway API concepts using Traefik
+
+**Learn Gateway API concepts using Traefik**
+
+- Understand the modern approach
+- Future-proof your knowledge
+
+**Consider Cilium later** if you want to dive deeper into modern networking
+
+---
+
+I decided to follow the advice, and start with **Traefik** even though I already used that
+with **K3s**.
+
+When installing Traefik using the command above, a single pod is created.
+A single instance is sufficient for a learning and non-production environments, as a
+single Traefik pod can handle significant traffic - easily thousands of requests per
+second depending on the hardware.
+
+Multiple replicas can be needed for:
+
+- **High availability** because otherwise if the node running Traefik fails, the ingress
+  goes down.
+- **High Traffic** as the load is distributed across multiple pods
+- **Production environments** - eliminate single point of failure at cluster level
+
+When needed, Traefik can be scaled using the following command:
+
+```bash
+# Upgrade to run 3 replicas
+helm upgrade traefik traefik/traefik \
+  --namespace traefik-system \
+  --set deployment.replicas=3 \
+  --set gatewayAPI.enabled=true \
+  --reuse-values
+
+# Verify multiple pods
+kubectl get pods -n traefik-system
+```
+
+**With multiple replicas:**
+
+- MetalLB will assign one external IP.
+- All Traefik pods share that IP.
+- Traffic is distributed across pods.
+- If one pod fails, others continue serving traffic.
+
+### How Traefik works with MetalLB
+
+When you expose Traefik as a LoadBalancer service:
+
+```bash
+kubectl get svc -n traefik-system
+```
+
+You'll see something like:
+
+```bash
+NAME      TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)                      AGE
+traefik   LoadBalancer   10.103.199.179   192.168.122.52   80:30443/TCP,443:31075/TCP   7m
+```
+
+**Single replica:** One pod handles all traffic via that external IP.
+
+**Multiple replicas:** MetalLB still assigns one IP, but Kubernetes load balances traffic
+across all pods.
+
+I will scale to 2-3 replicas later when I will want to learn about high availability
+concepts, test pod failure scenarios, and practice with anti-affinity rules (spreading
+pods across nodes).
+
+## Next steps
+
+Practice with [**Ansible**](./ansible.md) and with [**Longhorn**](./longhorn.md).

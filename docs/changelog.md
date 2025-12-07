@@ -1,3 +1,10 @@
+## 2025-12-07
+
+- Add notes regarding external access in a Kubernetes cluster created using `kubeadm`.
+- Add notes with basics of using `Ansible` to administer nodes of a Kubernetes cluster.
+- Add notes with basics of **distributed object stores and backups**, and using
+  `Longhorn` and `NFS` for a distributed storage and backups.
+
 ## 2025-11-30
 
 - Start studying [_Kubeadm_](./kubeadm/index.md), using `virt-manager` to prepare nodes.

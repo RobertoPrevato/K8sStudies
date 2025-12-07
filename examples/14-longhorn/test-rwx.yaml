@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: longhorn-rwx-test
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rwx-test
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rwx-test
+  template:
+    metadata:
+      labels:
+        app: rwx-test
+    spec:
+      containers:
+      - name: writer
+        image: busybox
+        command:
+        - sh
+        - -c
+        - |
+          while true; do
+            echo "\$(date) - Written by \$(hostname)" >> /data/shared.log
+            sleep 5
+          done
+        volumeMounts:
+        - name: shared-data
+          mountPath: /data
+      volumes:
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: longhorn-rwx-test
