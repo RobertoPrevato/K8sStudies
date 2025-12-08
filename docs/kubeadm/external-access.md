@@ -361,4 +361,4 @@ pods across nodes).
 
 ## Next steps
 
-Practice with [**Ansible**](./ansible.md) and with [**Longhorn**](./longhorn.md).
+Practice with [**Ansible**](./ansible.md) and with [**distributed storage**](./distributed-storage.md).

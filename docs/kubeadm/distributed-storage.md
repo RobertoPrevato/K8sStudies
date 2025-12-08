@@ -37,18 +37,6 @@ Distributed storage in Kubernetes spreads data across multiple nodes in a cluste
 - **MinIO** is ideal when you need S3-compatible object storage.
 - **TopoLVM** works well if you already have LVM configured on your nodes.
 
-## Why I Chose Longhorn for Practice
-
-For my learning environment, I decided to start with [Longhorn](https://longhorn.io/)
-because:
-
-1. **Easy Setup:** Quick installation via Helm or kubectl
-2. **User-Friendly UI:** Web interface for managing volumes, snapshots, and backups
-3. **Lightweight:** Minimal resource overhead, perfect for learning environments
-4. **Good Documentation:** Clear guides and examples
-5. **Production-Ready:** Created by Rancher (SUSE), used in production by many organizations
-6. **Complete Feature Set:** Includes snapshots, backups, replicas, and disaster recovery
-
 ## When Distributed Storage in K8s is Useful
 
 Since it is recommended to create Kubernetes clusters only using nodes with very little
@@ -82,7 +70,80 @@ Building A (Data Center)
 
 Many question the true usefulness of distributed storage systems like Longhorn,
 see this [Reddit post](https://www.reddit.com/r/kubernetes/comments/10war0o/can_someone_explain_me_the_true_benefits_of/)
-for an example.
+for an example. The first answer provides an interesting insight on tools like Longhorn:
+
+> Longhorn is for if you have bare metal clusters and no network storage, just direct
+> attached, and you are running stateful workloads in your clusters.
+>
+> You have other options, like Portworx, Rook, or a wholesale move to like Robin.
+> Longhorn competes with those.
+>
+> If your clusters are virtualized then, out on a limb here, you have some form of
+> networked storage even if it is vsan. Putting longhorn in when you have redundant
+> storage and enterprise backup is unnecessary.
+>
+> This day in age I tell people to just use the CSI driver their enterprise storage
+> provides.
+
+/// details | The comment above more in detail.
+
+- **What Longhorn is for:** Longhorn shines in bare‑metal Kubernetes clusters where
+  nodes only have local, directly attached disks (no shared SAN/NAS/iSCSI already in
+  place). If you still need to run stateful workloads (databases, queues, etc.),
+  Longhorn gives you distributed, replicated block storage inside the cluster so a
+  single node failure doesn’t take your data down.
+
+- **What it competes with:** Longhorn solves the same class of problems as Portworx,
+  Rook/Ceph, and similar “in‑cluster” storage stacks. These systems build a storage
+  layer on top of your worker nodes’ local disks, offering features like replication,
+  snapshots, and failover. They’re alternatives when you don’t have—or don’t want to
+  depend on—external enterprise storage.
+
+- **When it’s not needed:** If your Kubernetes runs on virtualization platforms (VMware,
+  Hyper‑V, cloud IaaS) you typically already have shared, redundant storage
+  underneath—vSAN, SAN, NAS, or cloud block storage—plus enterprise backup tooling. In
+  those environments, deploying Longhorn on top can be redundant. You’re layering
+  distributed storage over an already‑redundant, backed‑up storage tier, adding
+  complexity without clear benefit.
+
+- **What to use instead in virtualized/enterprise setups:** Prefer the vendor‑provided
+  CSI driver for your existing enterprise storage (NetApp, Pure, Dell/EMC, VMware vSAN,
+  cloud EBS/PD/Disk, etc.). The CSI driver exposes that storage to Kubernetes directly,
+  keeping your data path simpler and letting you leverage mature features (snapshots,
+  replication, backup, DR) already offered by the storage platform.
+
+**More to consider:**
+
+- Simplicity: Fewer moving parts. Use the storage platform that’s already reliable and
+  supported, rather than managing an additional distributed storage system inside the
+  cluster.
+- Performance and operations: Enterprise arrays or vSAN typically deliver predictable
+  performance, rich monitoring, and lifecycle tools. In‑cluster systems demand more
+  tuning (replica counts, rebuilds, anti‑affinity, network considerations).
+- DR reality: In‑cluster replication (Longhorn/Rook/etc.) covers node failures, not
+  site disasters. Enterprise storage and backup tooling often already address off‑site
+  backups and recovery workflows.
+
+**Exceptions where Longhorn still makes sense:**
+
+- Bare‑metal labs, edge sites, or small on‑prem clusters without shared storage.
+- Teams that want fully self‑contained storage managed by Kubernetes, with no
+  dependency on external arrays.
+- Cost or isolation constraints where enterprise storage isn’t available or desirable.
+- Learning/testing environments (your current scenario), because deployment is
+  straightforward and the features are easy to explore.
+
+**Quick decision guide:**
+
+- Bare metal with only local disks → Use Longhorn/Rook/OpenEBS class solutions.
+- Virtualized with vSAN/SAN/NAS or cloud block storage available → Use the platform’s
+  CSI driver; skip Longhorn.
+- Need object storage (S3 APIs) → Use MinIO or your cloud provider’s object store via
+  its CSI or native SDKs.
+- Need file semantics across many pods → Consider RWX via your storage vendor’s CSI or
+  Longhorn’s NFS RWX, with awareness of performance trade‑offs.
+
+///
 
 For true disaster recovery, you need off-site backups:
 
@@ -151,6 +212,18 @@ Disaster Recovery Process:
     1. Restore volumes from backups.
 
 ---
+
+## Why I Chose Longhorn for Practice
+
+For my learning environment, I decided to start with [Longhorn](https://longhorn.io/)
+because:
+
+1. **Easy Setup:** Quick installation via Helm or kubectl
+2. **User-Friendly UI:** Web interface for managing volumes, snapshots, and backups
+3. **Lightweight:** Minimal resource overhead, perfect for learning environments
+4. **Good Documentation:** Clear guides and examples
+5. **Production-Ready:** Created by Rancher (SUSE), used in production by many organizations
+6. **Complete Feature Set:** Includes snapshots, backups, replicas, and disaster recovery
 
 ## Using Longhorn
 
